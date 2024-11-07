@@ -1,11 +1,11 @@
-"use client"
+"use client"; // Ensure this component is a client component
 
-// Profile.tsx
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // Correct import for client component routing in app directory
 import Avatar from "../Avatar";
 import { AiFillCaretDown } from "react-icons/ai";
 import MenuProfile from "../Menuitem";
-import { SafeUser } from "../../../../types"; // Make sure to import SafeUser
+import { SafeUser } from "../../../../types";
 import { signIn, signOut } from "next-auth/react";
 
 interface ProfileProps {
@@ -14,6 +14,16 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const router = useRouter();
+
+    // Only perform the redirect if `currentUser` exists and this is running in the browser
+    useEffect(() => {
+        if (currentUser) {
+            router.push("/dashboard");
+        }else{
+            router.push("/")
+        }
+    }, [currentUser, router]);
 
     const toggleOpen = useCallback(() => {
         setIsOpen((prev) => !prev);
@@ -23,7 +33,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
         <div className="relative z-30">
             <div onClick={toggleOpen} className="p-2 border-[1px] flex flex-row items-center gap-1 rounded-full cursor-pointer hover:shadow-md transition text-black">
                 <Avatar src={currentUser?.image}/>
-                <p className="hidden md:block">{currentUser?.name}</p>
+                <p className="hidden lg:block">{currentUser?.name}</p>
                 <AiFillCaretDown />
             </div>
             {isOpen && (
