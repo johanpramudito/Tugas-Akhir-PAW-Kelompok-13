@@ -12,7 +12,11 @@ export const authOptions : AuthOptions = {
     }),
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 60 * 60 * 24 * 7, // 7 days 
+  },
+  jwt: {
+    maxAge: 60 * 60 * 24, // 1 day
   },
   secret: process.env.NEXTAUTH_SECRET,
 } 

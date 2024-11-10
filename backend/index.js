@@ -18,7 +18,8 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes placeholder
-app.use('/api', require('./api/routes/accountRoutes'));
+app.use('/api/accounts', require('./api/routes/accountRoutes'));
+app.use('/api/records', require('./api/routes/recordRoutes'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
