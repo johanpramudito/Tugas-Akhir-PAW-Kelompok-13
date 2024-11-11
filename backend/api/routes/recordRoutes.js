@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const postController = require('../controller/postController'); // Pastikan path postController benar
-// const putController = require('../controller/putController');
-// const deleteController = require('../controller/deleteController'); // Import deleteController
 const { deleteRecord } = require('../controller/deleteController');
 const { updateRecordByAccount } = require('../controller/putController');
 
