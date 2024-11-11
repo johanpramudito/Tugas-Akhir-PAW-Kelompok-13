@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'GeistMonoVF': ["GeistMonoVF", "sans-serif"],
+        'GeistVF': ["GeistVF", "sans-serif"],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
