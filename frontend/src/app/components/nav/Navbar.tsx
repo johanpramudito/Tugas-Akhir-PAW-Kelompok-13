@@ -2,6 +2,7 @@ import Container from "../Container";
 import Link from "next/link";
 import Profile from "./Profile";
 import { getCurrentUser } from "../../../../actions/getCurrentUser";
+import Image from "next/image";
 
 const Navbar = async () => {
     const currentUser = await getCurrentUser();
@@ -12,7 +13,10 @@ const Navbar = async () => {
                 <Container>
                     <div className="flex items-center justify-between gap-3 md:gap-0">
                         <div className="flex items-center gap-8 md:gap-12">
-                            <div className="hidden md:block font-semibold">Expense Tracker</div>
+                        <div className="hidden md:flex items-center space-x-2">
+                            <Image src={'./logo.svg'} alt="logo" width={30} height={30}/>
+                            <div className="font-semibold">Expense Tracker</div>
+                        </div>
                             {currentUser ? (
                                 <>
                                     <Link href="/dashboard" className="text-gray-400">Dashboard</Link>
@@ -20,7 +24,10 @@ const Navbar = async () => {
                                     <Link href="/records" className="text-gray-400">Records</Link>
                                 </>
                             ) : (
-                                <div className="block md:hidden font-semibold">Expense Tracker</div>
+                                <div className=" flex items-center space-x-2 md:hidden">
+                                    <Image src={'./logo.svg'} alt="logo" width={30} height={30}/>
+                                    <div className="font-semibold">Expense Tracker</div>
+                                </div>
                             )}
                         </div>
                         <div className="flex items-center">

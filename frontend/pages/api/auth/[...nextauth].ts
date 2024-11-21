@@ -1,9 +1,9 @@
 import NextAuth, { AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import prisma from "../../../libs/prismadb"
+import prisma from "../../../libs/prismadb";
 
-export const authOptions : AuthOptions = {
+export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -13,12 +13,8 @@ export const authOptions : AuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    maxAge: 60 * 60 * 24 * 7, // 7 days 
-  },
-  jwt: {
-    maxAge: 60 * 60 * 24, // 1 day
   },
   secret: process.env.NEXTAUTH_SECRET,
-} 
+};
 
 export default NextAuth(authOptions);

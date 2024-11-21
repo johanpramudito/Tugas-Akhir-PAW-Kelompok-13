@@ -20,6 +20,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Expense Tracker",
+  icons: "/logo.svg",
   description: "Kelompok 13 App",
 };
 
@@ -38,7 +39,7 @@ export default async function RootLayout({
       <body className={poppins.className}>
         <div className="flex flex-col min-h-screen">
         <Navbar/>
-       <main className="flex-grow bg-gray-200">{children}</main>
+       <main className="flex-grow bg-gray-50">{children}</main>
        </div>
       </body>
     </html>
