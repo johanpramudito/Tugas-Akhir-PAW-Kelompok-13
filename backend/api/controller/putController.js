@@ -34,96 +34,65 @@ async function updateAccount(req, res) {
   }
 }
 
-
-// Function to update record based on accountId
-async function updateRecordByAccount(req, res) {
+//edit record (bisa salah satu column aja atau bisa edit semua pake recordID)
+async function EditRecord(req, res) {
   try {
-    const { accountId, type, amount, category, note, location, toAccountId } = req.body;
+    const { recordId } = req.params; // Get record ID from params
+    const { type, amount, category, note, location } = req.body; // Get data from request body
 
-    // Validate type and amount
-    if (!['Expense', 'Income', 'Transfer'].includes(type)) {
-      return res.status(400).json({ message: 'Invalid type value' });
-    }
-    if (amount <= 0) {
-      return res.status(400).json({ message: 'Amount must be greater than zero' });
-    }
-
-    // Find the account based on accountId
-    const account = await Account.findById(accountId);
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found' });
-    }
-
-    // Handle Transfer separately
-    if (type === 'Transfer') {
-      if (!toAccountId) {
-        return res.status(400).json({ message: 'toAccountId is required for transfer' });
-      }
-
-      const toAccount = await Account.findById(toAccountId);
-      if (!toAccount) {
-        return res.status(404).json({ message: 'Destination account not found' });
-      }
-      if (account.balance < amount) {
-        return res.status(400).json({ message: 'Insufficient balance in the source account' });
-      }
-
-      // Create the transfer record
-      const transferRecord = new Record({
-        account: accountId,
-        type: 'Transfer',
-        amount,
-        toAccount: toAccountId,
-        note,
-        location
-      });
-      
-      // Update balances
-      account.balance -= amount;
-      toAccount.balance += amount;
-
-      // Save changes
-      await transferRecord.save();
-      account.records.push(transferRecord._id);
-      toAccount.records.push(transferRecord._id);
-
-      await account.save();
-      await toAccount.save();
-
-      return res.status(201).json({ message: 'Transfer completed successfully', transferRecord });
-    }
-
-    // Find the latest record for the given accountId (if not a transfer)
-    const record = await Record.findOne({ account: accountId }).sort({ date: -1 });
+    // Find the record by ID
+    const record = await Record.findById(recordId).populate('account');
     if (!record) {
-      return res.status(404).json({ message: 'Record not found for this account' });
+      return res.status(404).json({ message: 'Record not found' });
     }
 
-    // Adjust balance based on type
-    if (type === 'Income') {
-      account.balance += amount;
-    } else if (type === 'Expense') {
-      if (account.balance < amount) {
-        return res.status(400).json({ message: 'Insufficient balance for this expense' });
+    // Find the account associated with the record
+    const account = record.account;
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found for this record' });
+    }
+
+    // Revert the previous balance change only if amount exists
+    if (amount !== undefined) {
+      if (record.type === 'Income') {
+        account.balance -= record.amount; // Subtract old amount
+      } else if (record.type === 'Expense') {
+        account.balance += record.amount; // Add old amount back
       }
-      account.balance -= amount;
     }
 
-    // Update the record fields
-    record.type = type;
-    record.amount = amount;
-    record.category = category || record.category;
-    record.note = note || record.note;
-    record.location = location || record.location;
-    await record.save();
+    // Update the record fields if provided in the request body
+    if (type) record.type = type;
+    if (amount !== undefined) record.amount = amount;
+    if (category) record.category = category;
+    if (note) record.note = note;
+    if (location) record.location = location;
+    record.date = new Date(); // Update the date to current date
+    await record.save(); // Save the updated record
 
-    // Save the account with the updated balance
-    await account.save();
+    // Apply the new balance change if amount exists
+    if (amount !== undefined) {
+      if (type === 'Income') {
+        account.balance += amount;
+      } else if (type === 'Expense') {
+        account.balance -= amount;
+      }
+    }
 
-    res.status(200).json({ message: 'Record updated successfully', record });
+    await account.save(); // Save the updated account balance
+
+    // Return the success response
+    res.status(200).json({
+      message: 'Record updated successfully',
+      record,
+      account,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error updating record', error: error.message });
   }
 }
 
-module.exports = { updateAccount, updateRecordByAccount };
+
+
+
+module.exports = { updateAccount, EditRecord };
