@@ -9,7 +9,7 @@ const recordSchema = new mongoose.Schema({
     enum: ['Food & Beverages', 'Shopping', 'Housing', 'Transport', 'Entertainment', 'Recreation'],
     required: function() { return this.type === 'Expense'; } // Hanya wajib untuk Expense
   },
-  toAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' }, // Khusus untuk transfer
+  toAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' }, 
   date: { type: Date, default: Date.now },
   note: String,
   location: String
