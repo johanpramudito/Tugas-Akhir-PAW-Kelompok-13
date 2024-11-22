@@ -7,9 +7,9 @@ const getController = require('../controller/getController');
 
 // Route 
 router.post('/addAccount', addAccount);
-router.get('/detailAccounts', getController.getAccounts);
 router.put('/updateAccount/:id', updateAccount);
 router.delete('/deleteAccount/:id', deleteAccount);
 router.get('/search', getController.searchAccounts);
-
+router.get('/getAccount', getController.getAccounts);
+router.get('/sortingAccount/:sort', getController.getSortedAccounts);
 module.exports = router;

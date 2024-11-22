@@ -23,12 +23,6 @@ async function addAccount(req, res) {
   }
 }
 
-// module.exports = { addAccount };
-
-// const Account = require('../models/account');
-// const Record = require('../models/record');
-
-// Fungsi untuk menambah atau memperbarui record
 async function addOrUpdateRecord(req, res) {
   try {
     const { accountId, type, amount, category, note, location } = req.body;
