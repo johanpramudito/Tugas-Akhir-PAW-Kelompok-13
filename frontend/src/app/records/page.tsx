@@ -22,8 +22,11 @@ export default function Records() {
     { id: 2, category: "Transport", method: "Debit", amount: 50000, date: "2024-10-20T09:00" },
   ]);
   const [filterDate, setFilterDate] = useState<string>("");
+  const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterMethod, setFilterMethod] = useState<string>("");
   const [sortAmountOrder, setSortAmountOrder] = useState<"asc" | "desc">("asc");
   const [sortDateOrder, setSortDateOrder] = useState<"asc" | "desc">("asc");
+
   const [newTransaction, setNewTransaction] = useState<Transaction>({
     id: 0,
     category: "",
@@ -32,15 +35,17 @@ export default function Records() {
     date: "",
   });
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   useEffect(() => {
-    setLoading(false); // Set loading to false after the component mounts
+    setLoading(false);
   }, []);
 
   if (loading) {
-    return <Loading />; // Show loading screen while loading is true
+    return <Loading />;
   }
 
-  const handleFilter = (date: string) => {
+  const handleFilterDate = (date: string) => {
     setFilterDate(date);
   };
 
@@ -66,11 +71,15 @@ export default function Records() {
     if (newTransaction.category && newTransaction.method && newTransaction.amount && newTransaction.date) {
       setTransactions([...transactions, { ...newTransaction, id: transactions.length + 1 }]);
       setNewTransaction({ id: 0, category: "", method: "", amount: 0, date: "" });
+      setIsModalOpen(false);
     }
   };
 
-  const filteredTransactions = transactions.filter((transaction) =>
-    filterDate ? transaction.date.startsWith(filterDate) : true
+  const filteredTransactions = transactions.filter(
+    (transaction) =>
+      (filterDate ? transaction.date.startsWith(filterDate) : true) &&
+      (filterCategory ? transaction.category === filterCategory : true) &&
+      (filterMethod ? transaction.method === filterMethod : true)
   );
 
   return (
@@ -79,14 +88,36 @@ export default function Records() {
         <h1 className="text-2xl font-bold mb-4">Transaction Records</h1>
 
         {/* Filter Section */}
-        <div className="mb-4">
-          <label className="block mb-2">Filter by Date:</label>
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => handleFilter(e.target.value)}
-            className="p-2 border rounded"
-          />
+        <div className="mb-4 grid grid-cols-3 gap-4">
+          <div>
+            <label className="block mb-2">Filter by Date:</label>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => handleFilterDate(e.target.value)}
+              className="p-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block mb-2">Filter by Category:</label>
+            <input
+              type="text"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              placeholder="Category"
+              className="p-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block mb-2">Filter by Method:</label>
+            <input
+              type="text"
+              value={filterMethod}
+              onChange={(e) => setFilterMethod(e.target.value)}
+              placeholder="Method"
+              className="p-2 border rounded"
+            />
+          </div>
         </div>
 
         {/* Sort Buttons */}
@@ -96,6 +127,16 @@ export default function Records() {
           </button>
           <button onClick={handleSortByDate} className="bg-gray-200 p-2 rounded">
             Sort by Date ({sortDateOrder === "asc" ? "Oldest First" : "Newest First"})
+          </button>
+        </div>
+
+        {/* Add New Record Button */}
+        <div className="mb-4">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+          >
+            Add New Record
           </button>
         </div>
 
@@ -114,49 +155,61 @@ export default function Records() {
             </div>
           ))}
         </div>
-
-        {/* Add Transaction Form */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Add New Transaction</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Category"
-              value={newTransaction.category}
-              onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
-              className="p-2 border rounded"
-            />
-            <input
-              type="text"
-              placeholder="Payment Method"
-              value={newTransaction.method}
-              onChange={(e) => setNewTransaction({ ...newTransaction, method: e.target.value })}
-              className="p-2 border rounded"
-            />
-            <input
-              type="number"
-              placeholder="Amount"
-              value={newTransaction.amount}
-              onChange={(e) => setNewTransaction({ ...newTransaction, amount: Number(e.target.value) })}
-              className="p-2 border rounded"
-            />
-            <input
-              type="datetime-local"
-              value={newTransaction.date}
-              onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
-              className="p-2 border rounded"
-            />
-          </div>
-          <button
-            onClick={handleAddTransaction}
-            className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-          >
-            Add Transaction
-          </button>
-        </div>
       </Container>
 
       {showModal && <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />}
+
+      {/* Modal for Adding New Transaction */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded shadow-md w-96">
+            <h2 className="text-xl font-semibold mb-4">Add New Transaction</h2>
+            <div className="grid grid-cols-1 gap-4">
+              <input
+                type="text"
+                placeholder="Category"
+                value={newTransaction.category}
+                onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
+                className="p-2 border rounded"
+              />
+              <input
+                type="text"
+                placeholder="Payment Method"
+                value={newTransaction.method}
+                onChange={(e) => setNewTransaction({ ...newTransaction, method: e.target.value })}
+                className="p-2 border rounded"
+              />
+              <input
+                type="number"
+                placeholder="Amount"
+                value={newTransaction.amount}
+                onChange={(e) => setNewTransaction({ ...newTransaction, amount: Number(e.target.value) })}
+                className="p-2 border rounded"
+              />
+              <input
+                type="datetime-local"
+                value={newTransaction.date}
+                onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
+                className="p-2 border rounded"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="bg-gray-300 py-2 px-4 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddTransaction}
+                className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
