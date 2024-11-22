@@ -6,210 +6,257 @@ import Loading from "../components/Loading";
 import Container from "../components/Container";
 import AutoLogoutModal from "../components/AutoLogoutModal";
 
-type Transaction = {
-  id: number;
-  category: string;
-  method: string;
-  amount: number;
-  date: string;
+const categories = [
+  "Food & Beverages",
+  "Shopping",
+  "Housing",
+  "Transportation",
+  "Vehicle",
+  "Life & Entertainment",
+  "Communication, PC",
+];
+const accounts = ["Cash", "Debit Card", "Credit Card"];
+
+const getDateRange = (type) => {
+  const now = new Date();
+  const start = new Date();
+
+  switch (type) {
+    case "lastWeek":
+      start.setDate(now.getDate() - 7);
+      break;
+    case "lastMonth":
+      start.setMonth(now.getMonth() - 1);
+      break;
+    case "thisWeek":
+      start.setDate(now.getDate() - now.getDay());
+      break;
+    case "thisMonth":
+      start.setDate(1);
+      break;
+    case "custom":
+      // Custom range will not modify start/end here
+      break;
+    default:
+      return { start: null, end: null };
+  }
+
+  return { start, end: now };
 };
 
 export default function Records() {
   const { showModal, countdown, resetTimer } = useAutoLogout(10 * 60 * 1000); // 10 minutes no activity
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: 1, category: "Food & Beverage", method: "Cash", amount: 100000, date: "2024-10-21T19:00" },
-    { id: 2, category: "Transport", method: "Debit", amount: 50000, date: "2024-10-20T09:00" },
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [selectedAccount, setSelectedAccount] = useState("All Accounts");
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const [dateFilterLabel, setDateFilterLabel] = useState("All Dates");
+  const [transactions, setTransactions] = useState([
+    { id: 1, category: "Food & Beverages", method: "Cash", amount: 22000, date: "2024-11-11" },
+    { id: 2, category: "Shopping", method: "Credit Card", amount: 50000, date: "2024-11-20" },
   ]);
-  const [filterDate, setFilterDate] = useState<string>("");
-  const [filterCategory, setFilterCategory] = useState<string>("");
-  const [filterMethod, setFilterMethod] = useState<string>("");
-  const [sortAmountOrder, setSortAmountOrder] = useState<"asc" | "desc">("asc");
-  const [sortDateOrder, setSortDateOrder] = useState<"asc" | "desc">("asc");
 
-  const [newTransaction, setNewTransaction] = useState<Transaction>({
-    id: 0,
-    category: "",
-    method: "",
-    amount: 0,
-    date: "",
-  });
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDateFilterModal, setShowDateFilterModal] = useState(false);
 
   useEffect(() => {
-    setLoading(false);
+    // Simulate loading
+    setTimeout(() => setLoading(false), 1000); // Set loading to false after 1 second
   }, []);
 
   if (loading) {
     return <Loading />;
   }
 
-  const handleFilterDate = (date: string) => {
-    setFilterDate(date);
+  const handleCategoryFilter = (category) => {
+    setSelectedCategory(category);
   };
 
-  const handleSortByAmount = () => {
-    const sortedTransactions = [...transactions].sort((a, b) =>
-      sortAmountOrder === "asc" ? a.amount - b.amount : b.amount - a.amount
-    );
-    setTransactions(sortedTransactions);
-    setSortAmountOrder(sortAmountOrder === "asc" ? "desc" : "asc");
+  const handleAccountFilter = (account) => {
+    setSelectedAccount(account);
   };
 
-  const handleSortByDate = () => {
-    const sortedTransactions = [...transactions].sort((a, b) =>
-      sortDateOrder === "asc"
-        ? new Date(a.date).getTime() - new Date(b.date).getTime()
-        : new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    setTransactions(sortedTransactions);
-    setSortDateOrder(sortDateOrder === "asc" ? "desc" : "asc");
-  };
+  const handleDateFilter = (type) => {
+    const { start, end } = getDateRange(type);
+    setDateRange({ start, end });
 
-  const handleAddTransaction = () => {
-    if (newTransaction.category && newTransaction.method && newTransaction.amount && newTransaction.date) {
-      setTransactions([...transactions, { ...newTransaction, id: transactions.length + 1 }]);
-      setNewTransaction({ id: 0, category: "", method: "", amount: 0, date: "" });
-      setIsModalOpen(false);
+    switch (type) {
+      case "lastWeek":
+        setDateFilterLabel("Last Week");
+        break;
+      case "lastMonth":
+        setDateFilterLabel("Last Month");
+        break;
+      case "thisWeek":
+        setDateFilterLabel("This Week");
+        break;
+      case "thisMonth":
+        setDateFilterLabel("This Month");
+        break;
+      case "custom":
+        setDateFilterLabel("Custom Date");
+        break;
+      default:
+        setDateFilterLabel("All Dates");
     }
   };
 
-  const filteredTransactions = transactions.filter(
-    (transaction) =>
-      (filterDate ? transaction.date.startsWith(filterDate) : true) &&
-      (filterCategory ? transaction.category === filterCategory : true) &&
-      (filterMethod ? transaction.method === filterMethod : true)
-  );
+  const filteredTransactions = transactions.filter((transaction) => {
+    const transactionDate = new Date(transaction.date);
+
+    const matchesDate =
+      !dateRange.start ||
+      (transactionDate >= dateRange.start && transactionDate <= dateRange.end);
+
+    return (
+      (selectedCategory === "All Categories" || transaction.category === selectedCategory) &&
+      (selectedAccount === "All Accounts" || transaction.method === selectedAccount) &&
+      matchesDate
+    );
+  });
 
   return (
-    <div>
-      <Container>
-        <h1 className="text-2xl font-bold mb-4">Transaction Records</h1>
+    <div className="flex">
+      {/* Sidebar */}
+      <div className="w-1/4 bg-gray-100 p-4">
+        <button
+          className="w-full bg-green-500 text-white py-2 px-4 rounded mb-4 hover:bg-green-600"
+        >
+          + Add
+        </button>
 
         {/* Filter Section */}
-        <div className="mb-4 grid grid-cols-3 gap-4">
-          <div>
-            <label className="block mb-2">Filter by Date:</label>
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => handleFilterDate(e.target.value)}
-              className="p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-2">Filter by Category:</label>
-            <input
-              type="text"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              placeholder="Category"
-              className="p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-2">Filter by Method:</label>
-            <input
-              type="text"
-              value={filterMethod}
-              onChange={(e) => setFilterMethod(e.target.value)}
-              placeholder="Method"
-              className="p-2 border rounded"
-            />
-          </div>
-        </div>
-
-        {/* Sort Buttons */}
-        <div className="mb-4 flex gap-2">
-          <button onClick={handleSortByAmount} className="bg-gray-200 p-2 rounded">
-            Sort by Amount ({sortAmountOrder === "asc" ? "Ascending" : "Descending"})
-          </button>
-          <button onClick={handleSortByDate} className="bg-gray-200 p-2 rounded">
-            Sort by Date ({sortDateOrder === "asc" ? "Oldest First" : "Newest First"})
-          </button>
-        </div>
-
-        {/* Add New Record Button */}
-        <div className="mb-4">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-          >
-            Add New Record
-          </button>
-        </div>
-
-        {/* Transactions List */}
-        <div className="mb-4">
-          {filteredTransactions.map((transaction) => (
-            <div key={transaction.id} className="flex justify-between p-2 bg-gray-100 rounded mb-2">
-              <div>
-                <h3 className="font-semibold">{transaction.category}</h3>
-                <p>{transaction.method}</p>
-              </div>
-              <div className="text-right">
-                <p>Rp{transaction.amount.toLocaleString()}</p>
-                <p>{new Date(transaction.date).toLocaleString()}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Container>
-
-      {showModal && <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />}
-
-      {/* Modal for Adding New Transaction */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded shadow-md w-96">
-            <h2 className="text-xl font-semibold mb-4">Add New Transaction</h2>
-            <div className="grid grid-cols-1 gap-4">
-              <input
-                type="text"
-                placeholder="Category"
-                value={newTransaction.category}
-                onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
-                className="p-2 border rounded"
-              />
-              <input
-                type="text"
-                placeholder="Payment Method"
-                value={newTransaction.method}
-                onChange={(e) => setNewTransaction({ ...newTransaction, method: e.target.value })}
-                className="p-2 border rounded"
-              />
-              <input
-                type="number"
-                placeholder="Amount"
-                value={newTransaction.amount}
-                onChange={(e) => setNewTransaction({ ...newTransaction, amount: Number(e.target.value) })}
-                className="p-2 border rounded"
-              />
-              <input
-                type="datetime-local"
-                value={newTransaction.date}
-                onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
-                className="p-2 border rounded"
-              />
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="bg-gray-300 py-2 px-4 rounded hover:bg-gray-400"
+        <div className="mb-6">
+          <h2 className="font-bold mb-2">ACCOUNTS</h2>
+          <ul>
+            <li
+              onClick={() => handleAccountFilter("All Accounts")}
+              className={`cursor-pointer mb-1 ${
+                selectedAccount === "All Accounts" ? "font-bold" : ""
+              }`}
+            >
+              All Accounts
+            </li>
+            {accounts.map((account) => (
+              <li
+                key={account}
+                onClick={() => handleAccountFilter(account)}
+                className={`cursor-pointer mb-1 ${
+                  selectedAccount === account ? "font-bold" : ""
+                }`}
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddTransaction}
-                className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+                {account}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="font-bold mb-2">CATEGORIES</h2>
+          <ul>
+            <li
+              onClick={() => handleCategoryFilter("All Categories")}
+              className={`cursor-pointer mb-1 ${
+                selectedCategory === "All Categories" ? "font-bold" : ""
+              }`}
+            >
+              All Categories
+            </li>
+            {categories.map((category) => (
+              <li
+                key={category}
+                onClick={() => handleCategoryFilter(category)}
+                className={`cursor-pointer mb-1 ${
+                  selectedCategory === category ? "font-bold" : ""
+                }`}
               >
-                Add
+                {category}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="w-3/4 p-4">
+        <Container>
+          <div className="mb-4 flex justify-between">
+            <h1 className="text-xl font-bold">Records</h1>
+            <div>
+              <button
+                onClick={() => setShowDateFilterModal(true)}
+                className="bg-blue-500 text-white py-2 px-4 rounded mb-4 hover:bg-blue-600"
+              >
+                Filter by Date: {dateFilterLabel}
               </button>
             </div>
+          </div>
+
+          <div>
+            {filteredTransactions.map((transaction) => (
+              <div
+                key={transaction.id}
+                className="flex justify-between items-center p-2 border-b"
+              >
+                <div>
+                  <h3 className="font-semibold">{transaction.category}</h3>
+                  <p>{transaction.method}</p>
+                </div>
+                <div className="text-right">
+                  <p>IDR {transaction.amount.toLocaleString()}</p>
+                  <p>{transaction.date}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </div>
+
+      {/* Date Filter Modal */}
+      {showDateFilterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-1/3">
+            <h2 className="text-xl font-bold mb-4">Select Date Filter</h2>
+            <button
+              onClick={() => handleDateFilter("thisWeek")}
+              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+            >
+              This Week
+            </button>
+            <button
+              onClick={() => handleDateFilter("thisMonth")}
+              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => handleDateFilter("lastWeek")}
+              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+            >
+              Last Week
+            </button>
+            <button
+              onClick={() => handleDateFilter("lastMonth")}
+              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+            >
+              Last Month
+            </button>
+            <button
+              onClick={() => handleDateFilter("custom")}
+              className="block w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+            >
+              Custom Date
+            </button>
+            <button
+              onClick={() => setShowDateFilterModal(false)}
+              className="mt-4 w-full py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
+
+      {showModal && <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />}
     </div>
   );
 }
