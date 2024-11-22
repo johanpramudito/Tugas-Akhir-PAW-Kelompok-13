@@ -56,7 +56,7 @@ export default function Records() {
     { id: 2, category: "Shopping", method: "Credit Card", amount: 50000, date: "2024-11-20" },
   ]);
 
-  const [showDateFilterModal, setShowDateFilterModal] = useState(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
   useEffect(() => {
     // Simulate loading
@@ -177,17 +177,75 @@ export default function Records() {
       </div>
 
       {/* Main Content */}
-      <div className="w-3/4 p-4">
+      <div className="w-3/4 p-4 relative">
         <Container>
           <div className="mb-4 flex justify-between">
             <h1 className="text-xl font-bold">Records</h1>
-            <div>
+            <div className="relative">
               <button
-                onClick={() => setShowDateFilterModal(true)}
+                onClick={() => setShowDateFilter(!showDateFilter)}
                 className="bg-blue-500 text-white py-2 px-4 rounded mb-4 hover:bg-blue-600"
               >
                 Filter by Date: {dateFilterLabel}
               </button>
+
+              {/* Date filter pop-up */}
+              {showDateFilter && (
+                <div className="absolute left-0 mt-2 w-48 bg-white border rounded shadow-lg z-10">
+                  <div className="p-2">
+                    <label className="block mb-2">
+                      <input
+                        type="radio"
+                        name="dateFilter"
+                        onClick={() => handleDateFilter("thisWeek")}
+                        checked={dateFilterLabel === "This Week"}
+                        className="mr-2"
+                      />
+                      This Week
+                    </label>
+                    <label className="block mb-2">
+                      <input
+                        type="radio"
+                        name="dateFilter"
+                        onClick={() => handleDateFilter("thisMonth")}
+                        checked={dateFilterLabel === "This Month"}
+                        className="mr-2"
+                      />
+                      This Month
+                    </label>
+                    <label className="block mb-2">
+                      <input
+                        type="radio"
+                        name="dateFilter"
+                        onClick={() => handleDateFilter("lastWeek")}
+                        checked={dateFilterLabel === "Last Week"}
+                        className="mr-2"
+                      />
+                      Last Week
+                    </label>
+                    <label className="block mb-2">
+                      <input
+                        type="radio"
+                        name="dateFilter"
+                        onClick={() => handleDateFilter("lastMonth")}
+                        checked={dateFilterLabel === "Last Month"}
+                        className="mr-2"
+                      />
+                      Last Month
+                    </label>
+                    <label className="block mb-2">
+                      <input
+                        type="radio"
+                        name="dateFilter"
+                        onClick={() => handleDateFilter("custom")}
+                        checked={dateFilterLabel === "Custom Date"}
+                        className="mr-2"
+                      />
+                      Custom Date
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -210,51 +268,6 @@ export default function Records() {
           </div>
         </Container>
       </div>
-
-      {/* Date Filter Modal */}
-      {showDateFilterModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-1/3">
-            <h2 className="text-xl font-bold mb-4">Select Date Filter</h2>
-            <button
-              onClick={() => handleDateFilter("thisWeek")}
-              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-            >
-              This Week
-            </button>
-            <button
-              onClick={() => handleDateFilter("thisMonth")}
-              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-            >
-              This Month
-            </button>
-            <button
-              onClick={() => handleDateFilter("lastWeek")}
-              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-            >
-              Last Week
-            </button>
-            <button
-              onClick={() => handleDateFilter("lastMonth")}
-              className="block w-full mb-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-            >
-              Last Month
-            </button>
-            <button
-              onClick={() => handleDateFilter("custom")}
-              className="block w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-            >
-              Custom Date
-            </button>
-            <button
-              onClick={() => setShowDateFilterModal(false)}
-              className="mt-4 w-full py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
 
       {showModal && <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />}
     </div>
