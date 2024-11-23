@@ -1,15 +1,16 @@
 const express = require('express');
-const router = express.Router();
+const AccountRouter = express.Router();
 const { addAccount } = require('../controller/postController');
 const { updateAccount } = require('../controller/putController');
 const { deleteAccount } = require('../controller/deleteController');
-const getController = require('../controller/getController');
+const { searchAccounts, getAccounts, getSortedAccounts } = require('../controller/getController');
 
 // Route 
-router.post('/addAccount', addAccount);
-router.put('/updateAccount/:id', updateAccount);
-router.delete('/deleteAccount/:id', deleteAccount);
-router.get('/search', getController.searchAccounts);
-router.get('/getAccount', getController.getAccounts);
-router.get('/sortingAccount/:sort', getController.getSortedAccounts);
-module.exports = router;
+AccountRouter.post('/addAccount/:userId', addAccount);
+AccountRouter.put('/updateAccount/:id', updateAccount);
+AccountRouter.delete('/deleteAccount/:id', deleteAccount);
+AccountRouter.get('/search', searchAccounts);
+AccountRouter.get('/getAccount/:userId', getAccounts);
+AccountRouter.get('/sortingAccount/:sort', getSortedAccounts);
+
+module.exports = AccountRouter;

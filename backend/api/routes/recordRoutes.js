@@ -1,35 +1,40 @@
 const express = require('express');
-const router = express.Router();
-const postController = require('../controller/postController'); // Pastikan path postController benar
+const RecordRouter = express.Router();
 const { deleteRecord } = require('../controller/deleteController');
-const { EditRecord } = require('../controller/putController');
-const getController = require('../controller/getController');
+const { updateRecord } = require('../controller/putController');
+const { getRecordsByAccount, getSortedRecords, getFilteredRecordsByTime, getFilteredRecordByCategory, getRecordsByUser } = require('../controller/getController');
+const { addRecord, addTransfer } = require('../controller/postController');
 
-//route detail satu record
-router.get('/records/:id', getController.getRecordById);
+// //route detail satu record
+// router.get('/records/:id', getController.getRecordById);
 
 // route melihat semua record yg dimiliki satu account
-router.get('/records/account/:accountId', getController.getRecordsByAccountId);
+RecordRouter.get('/getRecord/:accountId', getRecordsByAccount);
+
+RecordRouter.get('/getRecordByUser/:userId', getRecordsByUser);
 
 // Route untuk menambahkan record
-router.post('/addRecord', postController.addRecord);
+RecordRouter.post('/addRecord/:accountId', addRecord);
 
 // Route untuk transfer antar akun
-router.post('/addTransfer', postController.addTransfer);
+RecordRouter.post('/addTransfer', addTransfer);
 
-// Route untuk menedit record tapi record sebelumnya masih ada di cloud
-router.post('/updateRecord', postController.addOrUpdateRecord);
+// // Route untuk menedit record tapi record sebelumnya masih ada di cloud
+// router.post('/updateRecord', postController.addOrUpdateRecord);
 
 // Route untuk mengupdate record dari id record
-router.put('/EditRecord/:recordId', EditRecord);
+RecordRouter.put('/updateRecord/:id', updateRecord);
 
 // Route untuk menghapus record berdasarkan ID record
-router.delete('/deleteRecord/:recordId', deleteRecord);
+RecordRouter.delete('/deleteRecord/:id', deleteRecord);
 
 //sorting record (time dan jumlah)
-router.get('/sortingRecord/:sort', getController.getSortedRecords);
+RecordRouter.get('/sortingRecord/:sort', getSortedRecords);
 
 //filter record by date
-router.get('/filterRecord', getController.getFilteredRecords);
+RecordRouter.get('/filterRecordByTime', getFilteredRecordsByTime);
 
-module.exports = router;
+//filter record by category
+RecordRouter.get('/filterRecordByCategory', getFilteredRecordByCategory);
+
+module.exports = RecordRouter;
