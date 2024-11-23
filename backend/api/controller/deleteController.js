@@ -1,90 +1,105 @@
-// deleteController.js
 const Account = require('../models/account');
 const Record = require('../models/record');
+const mongoose = require('mongoose');
+
 // Fungsi untuk menghapus akun berdasarkan ID
 async function deleteAccount(req, res) {
   try {
     const { id } = req.params;
 
+    // Validate account ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.error(`Invalid account ID: ${id}`);
+      return res.status(400).json({ message: 'Invalid account ID' });
+    }
+
+    // Find and delete the account
     const deletedAccount = await Account.findByIdAndDelete(id);
 
     if (!deletedAccount) {
+      console.error(`Account not found for ID: ${id}`);
       return res.status(404).json({ message: 'Account not found' });
     }
 
-    res.status(200).json({ message: 'Account deleted successfully' });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-}
+    // Delete related records
+    const result = await Record.deleteMany({ accountId: id });
+    console.log(`Deleted ${result.deletedCount} records related to accountId: ${id}`);
 
- 
+    res.status(200).json({ message: 'Account and related records deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteAccount:', error.message); // Log error message
+    res.status(500).json({ message: 'Server error while deleting account' });
+  }
+};
 
 const deleteRecord = async (req, res) => {
   try {
     // Ambil recordId dari parameter request
-    const { recordId } = req.params;
+    const { id } = req.params;
 
     // Cari record berdasarkan ID
-    const record = await Record.findById(recordId);
+    const record = await Record.findById(id);
 
     if (!record) {
+      console.error(`Record not found for ID: ${id}`);
       return res.status(404).json({ message: 'Record not found' });
     }
 
-    // Jika record ditemukan, simpan accountId dan amount
-    const { account: accountId, amount, type, toAccount } = record;
+    // Log the entire record to debug accountId
+    console.log('Record found:', record);
 
-    // Hapus record
-    await Record.findByIdAndDelete(recordId);
+    // Get accountId from record
+    const { accountId, amount, type, toAccountId } = record;
+
+    // Handle case where accountId is undefined
+    if (!accountId) {
+      console.error(`Missing accountId in record for ID: ${id}`);
+      return res.status(400).json({ message: 'Account ID is missing in the record' });
+    }
+
+    // Proceed with deletion and balance update...
+    await Record.findByIdAndDelete(id);
 
     // Update saldo account setelah record dihapus
     const account = await Account.findById(accountId);
 
     if (!account) {
+      console.error(`Account not found for ID: ${accountId}`);
       return res.status(404).json({ message: 'Account not found' });
     }
 
     // Tentukan perubahan saldo berdasarkan jenis record (Expense/Income/Transfer)
     if (type === 'Expense') {
-      // Jika jenis record adalah Expense, kurangi saldo
-      account.balance += amount;
+      account.balance += amount;  // Subtract the amount for expenses
     } else if (type === 'Income') {
-      // Jika jenis record adalah Income, tambahkan saldo
-      account.balance -= amount;
+      account.balance -= amount;  // Add the amount for income
     } else if (type === 'Transfer') {
-      // Jika jenis record adalah Transfer, perlu update saldo di dua akun
-      const targetAccount = await Account.findById(toAccount);
-      
+      // Handle transfer between accounts
+      const targetAccount = await Account.findById(toAccountId);
+
       if (!targetAccount) {
+        console.error(`Target account not found for transfer toAccountId: ${toAccountId}`);
         return res.status(404).json({ message: 'Target account not found' });
       }
 
-      // Kurangi saldo dari account pengirim
+      // Update balances for both sender and receiver
       account.balance += amount;
-      // Tambahkan saldo ke account penerima
       targetAccount.balance -= amount;
 
-      // Simpan perubahan saldo pada kedua akun
       await targetAccount.save();
     }
 
-    // Simpan perubahan saldo pada account pengirim
     await account.save();
 
-    // Kirimkan response sukses
     res.status(200).json({
       message: 'Record successfully deleted',
       record,
       updatedAccount: account
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in deleteRecord:', error.message); // Log error message
+    res.status(500).json({ message: 'Server error while deleting record' });
   }
 };
-
-
-
 
 module.exports = { deleteAccount, deleteRecord };
