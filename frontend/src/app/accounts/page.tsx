@@ -3,10 +3,10 @@
 import useAutoLogout from "../../../hook/useAutoLogout";
 import { useState, useEffect } from "react";
 import Loading from "../components/Loading";
-import Container from "../components/Container";
 import AutoLogoutModal from "../components/AutoLogoutModal";
 import api from "@utils/apiAccount";
 import { FiEdit, FiTrash } from 'react-icons/fi'; 
+import { useUserContext } from "@/context/UserContext";
 
 type Account = {
   _id: string;
@@ -28,12 +28,35 @@ export default function Account() {
   const [newAccount, setNewAccount] = useState({ name: '', type: 'Cash', initialAmount: 0 });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const { currentUser } = useUserContext();
+  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
+  const [query, setQuery] = useState<string>('');
+  
 
-  const userId = sessionStorage.getItem('userId') ?? ''; // Provide an empty string if null
-  if (!userId) {
-    console.error('User ID not found');
-    // Handle the missing user ID, e.g., redirect or show a modal
-  }
+  // Initialize user data
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        if (currentUser?.id) {
+          setUserId(currentUser?.id);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        setLoading(false);
+      }
+    };
+
+    initializeUser();
+  }, []);
+
+  // Fetch accounts when userId is available
+  useEffect(() => {
+    if (userId) {
+      fetchAccounts();
+    }
+  }, [userId]);
 
   useEffect(() => {
     // Set loading to false after the component mounts
@@ -46,9 +69,12 @@ export default function Account() {
 
   // Function to fetch accounts
   const fetchAccounts = async () => {
+    if (!userId) return;
+  
     try {
       const response = await api.getAccounts(userId);
       setAccounts(response.data);
+      setAllAccounts(response.data); // Store the fetched accounts for searching
     } catch (error) {
       console.error('Error fetching accounts:', error);
     }
@@ -60,32 +86,55 @@ export default function Account() {
   // }, []);
 
   // Handle search functionality
-  const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      try {
-        const response = await api.searchAccounts(searchQuery);
-        setAccounts(response.data);
-      } catch (error) {
-        console.error('Error searching accounts:', error);
-      }
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    filterAndSortAccounts(query, sortType);
+    if (e.target.value === '') {
+      setAccounts(allAccounts); // If search is cleared, show all accounts
+    } else {
+      // Filter accounts based on search query
+      const filteredAccounts = allAccounts.filter(account =>
+        account.name.toLowerCase().includes(e.target.value.toLowerCase()));
+      setAccounts(filteredAccounts);
     }
   };
 
-  // Handle sorting functionality
-  const handleSortChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedSort = e.target.value;
-    setSortType(selectedSort);
+  // Function to handle sorting changes
+const handleSortChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const selectedSort = e.target.value;
+  setSortType(selectedSort);
 
-    try {
-      const response = await api.getSortedAccounts(selectedSort);
-      setAccounts(response.data);
-    } catch (error) {
-      console.error('Error sorting accounts:', error);
-    }
-  };
+  // Filter and sort based on the selected sort type
+  filterAndSortAccounts(searchQuery, selectedSort);
+};
+
+const filterAndSortAccounts = (search: string, sort: string) => {
+  let filteredAccounts = [...allAccounts];
+
+  // Filter based on search query
+  if (search) {
+    filteredAccounts = filteredAccounts.filter(account =>
+      account.name.toLowerCase().includes(search.toLowerCase()));
+  }
+
+  // Sort based on sort type
+  if (sort === 'A-Z') {
+    filteredAccounts.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sort === 'Z-A') {
+    filteredAccounts.sort((a, b) => b.name.localeCompare(a.name));
+  } else if (sort === 'BalanceLowest') {
+    filteredAccounts.sort((a, b) => a.balance - b.balance);
+  } else if (sort === 'BalanceHighest') {
+    filteredAccounts.sort((a, b) => b.balance - a.balance);
+  }
+
+  setAccounts(filteredAccounts); // Update the accounts state
+};
 
   // Handle adding new account or editing existing account
   const handleAddAccount = async () => {
+    if(!userId) return;
+
     try {
       if (isEditMode && selectedAccount) {
         // Edit existing account
@@ -181,8 +230,7 @@ export default function Account() {
             type="text"
             placeholder="Search"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearch} // Trigger search on Enter key press
+            onChange={handleSearch}
             className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
           />
           <label className="block mb-2 text-gray-700">Sort by</label>
@@ -247,7 +295,7 @@ export default function Account() {
 
       {/* Add/Edit Account Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center bg-slate-200 bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">{isEditMode ? 'Edit Account' : 'Add New Account'}</h2>
@@ -278,6 +326,7 @@ export default function Account() {
                   value={newAccount.name}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+                  required // Make this field required
                 />
               </div>
               <div className="mb-4">
@@ -287,6 +336,7 @@ export default function Account() {
                   value={newAccount.type}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+                  required // Make this field required
                 >
                   <option value="Cash">Cash</option>
                   <option value="Bank">Bank</option>
@@ -300,6 +350,7 @@ export default function Account() {
                   value={newAccount.initialAmount}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+                  required // Make this field required
                 />
               </div>
               <button
@@ -315,7 +366,7 @@ export default function Account() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center bg-slate-200 bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold mb-4">Delete Account</h2>
             <p>Are you sure you want to delete this account? This action cannot be undone.</p>

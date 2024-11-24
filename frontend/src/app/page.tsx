@@ -1,6 +1,5 @@
 "use client";
 
-import Container from "./components/Container";
 import { useState, useEffect } from "react";
 import Loading from "./components/Loading";
 import Hero from "./components/Hero";

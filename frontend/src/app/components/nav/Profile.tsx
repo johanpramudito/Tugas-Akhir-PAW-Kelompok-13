@@ -7,6 +7,7 @@ import { AiFillCaretDown } from "react-icons/ai";
 import MenuProfile from "../Menuitem";
 import { SafeUser } from "../../../../types";
 import { signIn, signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
 interface ProfileProps {
     currentUser: SafeUser | null;
@@ -15,15 +16,25 @@ interface ProfileProps {
 const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
     const [isOpen, setIsOpen] = useState(false);
     const router = useRouter();
+    const pathname = usePathname();  // Get current path using usePathname
 
     // Only perform the redirect if `currentUser` exists and this is running in the browser
     useEffect(() => {
         if (currentUser) {
-            router.push("/dashboard");
-        }else{
-            router.push("/")
+            // Check the current path and redirect accordingly
+            if (pathname === '/') {
+                router.push('/dashboard');
+            } else if (pathname === '/dashboard') {
+                router.push('/dashboard');
+            } else if (pathname === '/accounts') {
+                router.push('/accounts');
+            } else if (pathname === '/records') {
+                router.push('/records');
+            }
+        } else {
+            router.push('/');
         }
-    }, [currentUser, router]);
+    }, [currentUser, pathname, router]);  // Include pathname in dependencies
 
     const toggleOpen = useCallback(() => {
         setIsOpen((prev) => !prev);
