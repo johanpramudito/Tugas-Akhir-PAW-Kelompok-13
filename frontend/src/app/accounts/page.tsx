@@ -1,4 +1,4 @@
-// "use client";
+"use client";
 
 import useAutoLogout from "../../../hook/useAutoLogout";
 import { useState, useEffect } from "react";
@@ -8,13 +8,13 @@ import api from "@utils/apiAccount";
 import { FiEdit, FiTrash } from 'react-icons/fi'; 
 import { useUserContext } from "@/context/UserContext";
 
-// type Account = {
-//   _id: string;
-//   name: string;
-//   type: string;
-//   initialAmount: number;
-//   balance: number;
-// };
+type Account = {
+  _id: string;
+  name: string;
+  type: string;
+  initialAmount: number;
+  balance: number;
+};
 
 export default function Account() {
   const { showModal, countdown, resetTimer } = useAutoLogout(10 * 60 * 1000); // 10 minutes no activity
@@ -58,14 +58,14 @@ export default function Account() {
     }
   }, [userId]);
 
-//   useEffect(() => {
-//     // Set loading to false after the component mounts
-//     setLoading(false);
-//   }, []);
+  useEffect(() => {
+    // Set loading to false after the component mounts
+    setLoading(false);
+  }, []);
 
-//   if (loading) {
-//     return <Loading />; // Show loading screen while loading is true
-//   }
+  if (loading) {
+    return <Loading />; // Show loading screen while loading is true
+  }
 
   // Function to fetch accounts
   const fetchAccounts = async () => {
@@ -80,10 +80,10 @@ export default function Account() {
     }
   };
 
-//   // // Fetch accounts on component mount
-//   // useEffect(() => {
-//   //   fetchAccounts();
-//   // }, []);
+  // // Fetch accounts on component mount
+  // useEffect(() => {
+  //   fetchAccounts();
+  // }, []);
 
   // Handle search functionality
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,75 +144,75 @@ const filterAndSortAccounts = (search: string, sort: string) => {
         await api.addAccount(userId, newAccount);
       }
 
-//       fetchAccounts();
-//       handleCloseModal();
-//       resetForm();
-//     } catch (error) {
-//       console.error('Error saving account:', error);
-//     }
-//   };
+      fetchAccounts();
+      handleCloseModal();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving account:', error);
+    }
+  };
 
-//   // Reset form fields
-//   const resetForm = () => {
-//     setNewAccount({ name: '', type: 'Cash', initialAmount: 0 });
-//     setSelectedAccount(null);
-//     setIsEditMode(false);
-//   };
+  // Reset form fields
+  const resetForm = () => {
+    setNewAccount({ name: '', type: 'Cash', initialAmount: 0 });
+    setSelectedAccount(null);
+    setIsEditMode(false);
+  };
 
-//   // Handle input change
-//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-//     const { name, value } = e.target;
-//     setNewAccount({ ...newAccount, [name]: value });
-//   };
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewAccount({ ...newAccount, [name]: value });
+  };
 
-//   // Handle delete account
-//   const handleDeleteAccount = async () => {
-//     if (accountToDelete) {
-//       try {
-//         await api.deleteAccount(accountToDelete);
-//         setAccounts(accounts.filter((account) => account._id !== accountToDelete));
-//         console.log(`Account with ID: ${accountToDelete} has been deleted.`);
-//       } catch (error) {
-//         console.error("Error deleting account:", error);
-//       } finally {
-//         setIsDeleteModalOpen(false);
-//         setAccountToDelete(null);
-//       }
-//     }
-//   };
+  // Handle delete account
+  const handleDeleteAccount = async () => {
+    if (accountToDelete) {
+      try {
+        await api.deleteAccount(accountToDelete);
+        setAccounts(accounts.filter((account) => account._id !== accountToDelete));
+        console.log(`Account with ID: ${accountToDelete} has been deleted.`);
+      } catch (error) {
+        console.error("Error deleting account:", error);
+      } finally {
+        setIsDeleteModalOpen(false);
+        setAccountToDelete(null);
+      }
+    }
+  };
   
-//   const openDeleteModal = (id: string) => {
-//     setIsDeleteModalOpen(true);
-//     setAccountToDelete(id);
-//   };
+  const openDeleteModal = (id: string) => {
+    setIsDeleteModalOpen(true);
+    setAccountToDelete(id);
+  };
 
-//   const closeDeleteModal = () => {
-//     setIsDeleteModalOpen(false);
-//     setAccountToDelete(null);
-//   };
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setAccountToDelete(null);
+  };
 
-//   // Handle open modal for edit
-//   const handleEditAccount = (account: Account) => {
-//     setSelectedAccount(account);
-//     setNewAccount({
-//       name: account.name,
-//       type: account.type,
-//       initialAmount: account.balance,
-//     });
-//     setIsEditMode(true);
-//     setIsModalOpen(true);
-//   };
+  // Handle open modal for edit
+  const handleEditAccount = (account: Account) => {
+    setSelectedAccount(account);
+    setNewAccount({
+      name: account.name,
+      type: account.type,
+      initialAmount: account.balance,
+    });
+    setIsEditMode(true);
+    setIsModalOpen(true);
+  };
 
-//   // Modal control
-//   const handleOpenModal = () => {
-//     setIsModalOpen(true);
-//     resetForm();
-//   };
+  // Modal control
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    resetForm();
+  };
 
-//   const handleCloseModal = () => {
-//     setIsModalOpen(false);
-//     resetForm();
-//   };
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    resetForm();
+  };
   
   return (
     <div className="container mx-auto p-4">
@@ -247,51 +247,51 @@ const filterAndSortAccounts = (search: string, sort: string) => {
           </select>
         </div>
 
-//         {/* Accounts List */}
-//         <div className="flex-1 bg-gray-100 p-4 rounded-lg shadow-md">
-//           {accounts.map((account) => (
-//             <div
-//               key={account._id}
-//               className="flex justify-between items-center bg-white p-4 mb-4 rounded-lg shadow-sm"
-//             >
-//               <div className="flex w-full items-center">
-//                 {/* Account Name */}
-//                 <div className="flex-1 text-left">
-//                   <h3 className="text-lg font-bold">{account.name}</h3>
-//                 </div>
+       {/* Accounts List */}
+         <div className="flex-1 bg-gray-100 p-4 rounded-lg shadow-md">
+           {accounts.map((account) => (
+            <div
+              key={account._id}
+              className="flex justify-between items-center bg-white p-4 mb-4 rounded-lg shadow-sm"
+            >
+              <div className="flex w-full items-center">
+                {/* Account Name */}
+                <div className="flex-1 text-left">
+                  <h3 className="text-lg font-bold">{account.name}</h3>
+                </div>
 
-//                 {/* Account Type */}
-//                 <div className="flex-1 text-center">
-//                   <p className="text-gray-500">{account.type}</p>
-//                 </div>
+                {/* Account Type */}
+                <div className="flex-1 text-center">
+                  <p className="text-gray-500">{account.type}</p>
+                </div>
 
-//                 {/* Account Balance */}
-//                 <div className="flex-1 text-right">
-//                   <span className={`text-lg font-bold ${account.balance < 0 ? 'text-red-500' : 'text-green-500'}`}>
-//                     IDR {account.balance.toLocaleString('id-ID')}
-//                   </span>
-//                 </div>
-//               </div>
+                {/* Account Balance */}
+                <div className="flex-1 text-right">
+                  <span className={`text-lg font-bold ${account.balance < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    IDR {account.balance.toLocaleString('id-ID')}
+                  </span>
+                </div>
+              </div>
 
-//               {/* Edit and Delete Buttons */}
-//               <div className="flex items-center gap-4 ml-4">
-//                 <button
-//                   onClick={() => handleEditAccount(account)}
-//                   className="text-gray-600 hover:text-blue-600"
-//                 >
-//                   <FiEdit size={20} />
-//                 </button>
-//                 <button
-//                   onClick={() => openDeleteModal(account._id)}
-//                   className="text-gray-600 hover:text-red-600"
-//                 >
-//                   <FiTrash size={20} />
-//                 </button>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </div>
+              {/* Edit and Delete Buttons */}
+              <div className="flex items-center gap-4 ml-4">
+                <button
+                  onClick={() => handleEditAccount(account)}
+                  className="text-gray-600 hover:text-blue-600"
+                >
+                  <FiEdit size={20} />
+                </button>
+                <button
+                  onClick={() => openDeleteModal(account._id)}
+                  className="text-gray-600 hover:text-red-600"
+                >
+                  <FiTrash size={20} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Add/Edit Account Modal */}
       {isModalOpen && (
@@ -388,9 +388,9 @@ const filterAndSortAccounts = (search: string, sort: string) => {
         </div>
       )}
 
-//       {showModal && (
-//         <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />
-//       )}
-//     </div>
-//   );
-// }
+       {showModal && (
+        <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />
+      )}
+    </div>
+  );
+}

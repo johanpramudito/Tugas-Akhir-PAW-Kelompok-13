@@ -1,7 +1,7 @@
 import Container from "../Container";
-import Link from "next/link";
 import Profile from "./Profile";
 import { getCurrentUser } from "../../../../actions/getCurrentUser";
+import NavLink from "./Navlink";
 
 const Navbar = async () => {
     const currentUser = await getCurrentUser();
@@ -18,9 +18,9 @@ const Navbar = async () => {
                         </div>
                             {currentUser ? (
                                 <>
-                                    <Link href="/dashboard" className="text-gray-400">Dashboard</Link>
-                                    <Link href="/accounts" className="text-gray-400">Accounts</Link>
-                                    <Link href="/records" className="text-gray-400">Records</Link>
+                                    <NavLink href="/dashboard">Dashboard</NavLink>
+                                    <NavLink href="/accounts">Accounts</NavLink>
+                                    <NavLink href="/records">Records</NavLink>
                                 </>
                             ) : (
                                 <div className=" flex items-center space-x-2 md:hidden">
