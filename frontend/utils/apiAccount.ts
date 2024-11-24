@@ -11,8 +11,6 @@ export const api = {
   updateAccount: async (id: string, data: any) => axiosInstance.put(`/updateAccount/${id}`, data),
   deleteAccount: async (id: string) => axiosInstance.delete(`/deleteAccount/${id}`),
   getAccounts: async (userId: string) => axiosInstance.get(`/getAccount/${userId}`),
-  searchAccounts: async (query: string) => axiosInstance.get('/search', { params: { query } }),
-  getSortedAccounts: async (sortType: string) => axiosInstance.get(`/sortingAccount/${sortType}`),
 };
 
 export default api;
