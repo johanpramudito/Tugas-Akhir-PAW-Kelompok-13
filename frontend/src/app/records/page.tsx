@@ -1,47 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Pencil, Trash2 } from "lucide-react"; // Import icons
 import AddRecordModal from "../components/dashboard/AddRecord";
-
-const categories = [
-  "All Categories",
-  "Food & Beverages",
-  "Shopping",
-  "Housing",
-  "Transport",
-  "Entertainment",
-  "Recreation",
-  "Income",
-  "Transfer",
-];
-
-const accounts = ["All Accounts", "Cash", "Debit Card", "Credit Card"];
-const predefinedRanges = [
-  { label: "Last 7 days", days: 7 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-  { label: "Last 12 months", months: 12 },
-  { label: "Today", today: true },
-  { label: "This week", week: true },
-  { label: "This month", month: true },
-  { label: "This year", year: true },
-  { label: "All Dates", all: true },
-];
-
-const getDisplayDate = (selectedRange, isCustomRange, dateRange) => {
-  if (!isCustomRange) {
-    return selectedRange;
-  }
-  const startDate = new Date(dateRange.start).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  const endDate = new Date(dateRange.end).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  return `${startDate} - ${endDate}`;
-};
 
 export default function RecordsDashboard() {
   const [transactions, setTransactions] = useState([]);
@@ -55,6 +16,99 @@ export default function RecordsDashboard() {
   const [isCustomRange, setIsCustomRange] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState(null);
+
+  const categories = [
+    "All Categories",
+    "Food & Beverages",
+    "Shopping",
+    "Housing",
+    "Transport",
+    "Entertainment",
+    "Recreation",
+    "Income",
+    "Transfer",
+  ];
+
+  const accounts = ["All Accounts", "Cash", "Debit Card", "Credit Card"];
+  const predefinedRanges = [
+    { label: "Last 7 days", days: 7 },
+    { label: "Last 30 days", days: 30 },
+    { label: "Last 90 days", days: 90 },
+    { label: "Last 12 months", months: 12 },
+    { label: "Today", today: true },
+    { label: "This week", week: true },
+    { label: "This month", month: true },
+    { label: "This year", year: true },
+    { label: "All Dates", all: true },
+  ];
+
+  const handleEditRecord = (record) => {
+    setEditingRecord(record);
+    setShowAddRecordModal(true);
+  };
+
+  const handleDeleteRecord = (record) => {
+    setRecordToDelete(record);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (recordToDelete) {
+      const newTransactions = transactions.filter(
+        (t) => t.id !== recordToDelete.id
+      );
+      setTransactions(newTransactions);
+      setFilteredTransactions(newTransactions);
+      setRecordToDelete(null);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleSaveRecord = (updatedRecord) => {
+    if (editingRecord) {
+      // Update existing record
+      const newTransactions = transactions.map((t) =>
+        t.id === editingRecord.id
+          ? { ...updatedRecord, id: editingRecord.id }
+          : t
+      );
+      setTransactions(newTransactions);
+      setFilteredTransactions(newTransactions);
+      setEditingRecord(null);
+    } else {
+      // Add new record
+      const newRecord = {
+        ...updatedRecord,
+        id: Date.now().toString(), // Simple ID generation
+        accountFrom: updatedRecord.accountFrom || null,
+        accountTo: updatedRecord.accountTo || "No Account Specified",
+        date: updatedRecord.date
+          ? new Date(updatedRecord.date).toISOString()
+          : new Date().toISOString(),
+      };
+      setTransactions((prev) => [...prev, newRecord]);
+      setFilteredTransactions((prev) => [...prev, newRecord]);
+    }
+    applyFilters();
+  };
+
+  const getDisplayDate = (selectedRange, isCustomRange, dateRange) => {
+    if (!isCustomRange) {
+      return selectedRange;
+    }
+    const startDate = new Date(dateRange.start).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const endDate = new Date(dateRange.end).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    return `${startDate} - ${endDate}`;
+  };
 
   useEffect(() => {
     const dummyData = [
@@ -67,136 +121,10 @@ export default function RecordsDashboard() {
       },
       {
         id: "2",
-        account: "Debit Card",
-        category: "Shopping",
-        amount: -1200.0,
+        accountTo: "Debit Card",
+        category: "Income",
+        amount: 1200.0,
         date: new Date("2024-11-11"),
-      },
-      {
-        id: "3",
-        account: "Credit Card",
-        category: "Transport",
-        amount: -500.0,
-        date: new Date("2024-11-15"),
-      },
-      {
-        id: "4",
-        account: "Cash",
-        category: "Housing",
-        amount: -8000.0,
-        date: new Date("2024-10-01"),
-      },
-      {
-        id: "5",
-        account: "Debit Card",
-        category: "Entertainment",
-        amount: -150.0,
-        date: new Date("2024-09-20"),
-      },
-      {
-        id: "6",
-        account: "Credit Card",
-        category: "Recreation",
-        amount: -200.0,
-        date: new Date("2024-09-15"),
-      },
-      {
-        id: "7",
-        account: "Cash",
-        category: "Shopping",
-        amount: -300.0,
-        date: new Date("2024-08-18"),
-      },
-      {
-        id: "8",
-        account: "Debit Card",
-        category: "Transport",
-        amount: -100.0,
-        date: new Date("2024-07-12"),
-      },
-      {
-        id: "9",
-        account: "Credit Card",
-        category: "Food & Beverages",
-        amount: -500.0,
-        date: new Date("2024-07-05"),
-      },
-      {
-        id: "10",
-        account: "Cash",
-        category: "Entertainment",
-        amount: -75.0,
-        date: new Date("2024-06-25"),
-      },
-      {
-        id: "11",
-        account: "Debit Card",
-        category: "Recreation",
-        amount: -220.0,
-        date: new Date("2024-06-18"),
-      },
-      {
-        id: "12",
-        account: "Credit Card",
-        category: "Housing",
-        amount: -7500.0,
-        date: new Date("2024-05-10"),
-      },
-      {
-        id: "13",
-        account: "Cash",
-        category: "Shopping",
-        amount: -600.0,
-        date: new Date("2024-05-08"),
-      },
-      {
-        id: "14",
-        account: "Debit Card",
-        category: "Food & Beverages",
-        amount: -300.0,
-        date: new Date("2024-04-22"),
-      },
-      {
-        id: "15",
-        account: "Credit Card",
-        category: "Transport",
-        amount: -120.0,
-        date: new Date("2024-04-15"),
-      },
-      {
-        id: "16",
-        account: "Cash",
-        category: "Entertainment",
-        amount: -90.0,
-        date: new Date("2024-03-05"),
-      },
-      {
-        id: "17",
-        account: "Debit Card",
-        category: "Recreation",
-        amount: -140.0,
-        date: new Date("2024-03-02"),
-      },
-      {
-        id: "18",
-        account: "Credit Card",
-        category: "Housing",
-        amount: -8800.0,
-        date: new Date("2024-02-20"),
-      },
-      {
-        id: "19",
-        account: "Cash",
-        category: "Transport",
-        amount: -50.0,
-        date: new Date("2024-02-10"),
-      },
-      {
-        id: "20",
-        account: "Debit Card",
-        category: "Shopping",
-        amount: -250.0,
-        date: new Date("2024-01-25"),
       },
     ];
 
@@ -211,9 +139,18 @@ export default function RecordsDashboard() {
     let filtered = transactions;
 
     if (selectedAccount !== "All Accounts") {
-      filtered = filtered.filter(
-        (transaction) => transaction.account === selectedAccount
-      );
+      filtered = filtered.filter((transaction) => {
+        if (transaction.type === "transfer") {
+          return (
+            transaction.accountFrom === selectedAccount ||
+            transaction.accountTo === selectedAccount
+          );
+        }
+        if (transaction.type === "income") {
+          return transaction.accountTo === selectedAccount;
+        }
+        return transaction.accountFrom === selectedAccount; // Untuk expense
+      });
     }
 
     if (selectedCategory !== "All Categories") {
@@ -223,6 +160,7 @@ export default function RecordsDashboard() {
     }
 
     if (dateRange.start && dateRange.end) {
+      if (!validateDateRange()) return; // Hentikan jika validasi gagal
       filtered = filtered.filter(
         (transaction) =>
           transaction.date >= new Date(dateRange.start) &&
@@ -243,12 +181,30 @@ export default function RecordsDashboard() {
     setFilteredTransactions(filtered);
   };
 
+  const handleSortChange = (option) => {
+    setSortOption(option);
+    setFilteredTransactions((prevFiltered) => {
+      const sorted = [...prevFiltered];
+      if (option === "Time (newest first)") {
+        sorted.sort((a, b) => b.date - a.date);
+      } else if (option === "Time (oldest first)") {
+        sorted.sort((a, b) => a.date - b.date);
+      } else if (option === "Amount (lowest first)") {
+        sorted.sort((a, b) => Math.abs(a.amount) - Math.abs(b.amount));
+      } else if (option === "Amount (highest first)") {
+        sorted.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      }
+      return sorted;
+    });
+  };
+
   const handlePredefinedRange = (range) => {
     setIsCustomRange(false);
     setSelectedRange(range.label);
 
     if (range.all) {
       setDateRange({ start: "", end: "" });
+      setFilteredTransactions(transactions); // Reset semua filter
     } else {
       const now = new Date();
       let start, end;
@@ -275,18 +231,24 @@ export default function RecordsDashboard() {
         end = now;
       }
 
+      const filtered = transactions.filter(
+        (transaction) => transaction.date >= start && transaction.date <= end
+      );
+
       setDateRange({
         start: start.toISOString().split("T")[0],
         end: end.toISOString().split("T")[0],
       });
+
+      setFilteredTransactions(filtered); // Update hasil filter
     }
 
     setShowDateFilter(false);
-    applyFilters();
   };
 
   const handleCustomRange = () => {
     if (dateRange.start && dateRange.end) {
+      if (!validateDateRange()) return; // NEW: Validasi tambahan sebelum filter
       setIsCustomRange(true);
       setSelectedRange("Custom Range");
       setShowDateFilter(false);
@@ -296,19 +258,62 @@ export default function RecordsDashboard() {
 
   const handleAccountFilter = (account) => {
     setSelectedAccount(account);
-    applyFilters();
+    setFilteredTransactions((prevTransactions) =>
+      transactions.filter((transaction) =>
+        account === "All Accounts"
+          ? true
+          : transaction.accountFrom === account ||
+            transaction.accountTo === account
+      )
+    );
+  };
+  // Calculate balance dynamically based on the selected filter
+  const calculateBalance = () => {
+    let balance = 0;
+
+    // Filter transactions based on the selected account
+    const filteredForAccount = filteredTransactions.filter((transaction) => {
+      if (selectedAccount === "All Accounts") {
+        return true; // Include all transactions if "All Accounts" is selected
+      }
+      if (
+        transaction.accountFrom === selectedAccount ||
+        transaction.accountTo === selectedAccount
+      ) {
+        return true; // Include transactions involving the selected account
+      }
+      return false;
+    });
+    // Sum up the amounts for the filtered transactions
+    filteredForAccount.forEach((transaction) => {
+      balance += transaction.amount;
+    });
+
+    return balance;
   };
 
   const handleCategoryFilter = (category) => {
     setSelectedCategory(category);
-    applyFilters();
+    setFilteredTransactions((prevTransactions) =>
+      transactions.filter((transaction) =>
+        category === "All Categories" ? true : transaction.category === category
+      )
+    );
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    // NEW: Indikator loading
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div
+          className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-500"
+          role="status"
+        ></div>
+      </div>
+    );
   }
 
-  const getCategoryEmoji = (category) => {
+  function getCategoryEmoji(category) {
     switch (category) {
       case "Food & Beverages":
         return "🍔";
@@ -322,10 +327,14 @@ export default function RecordsDashboard() {
         return "🎮";
       case "Recreation":
         return "🏞️";
+      case "Income": // Emoji untuk Income
+        return "💰";
+      case "Transfer": // Emoji untuk Transfer
+        return "🔄";
       default:
-        return "📂";
+        return "📂"; // Default emoji untuk kategori yang tidak dikenal
     }
-  };
+  }
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -379,23 +388,63 @@ export default function RecordsDashboard() {
           const formattedRecord = {
             ...newRecord,
             accountFrom: newRecord.accountFrom || null,
-            accountTo: newRecord.accountTo || "No Account Specified", // Pastikan accountTo memiliki nilai
-            date: new Date(newRecord.date).toISOString(),
+            accountTo: newRecord.accountTo || "No Account Specified",
+            date: newRecord.date
+              ? new Date(newRecord.date).toISOString()
+              : new Date().toISOString(),
           };
 
-          setTransactions([...transactions, formattedRecord]);
-          setFilteredTransactions([...filteredTransactions, formattedRecord]);
+          setTransactions((prevTransactions) => [
+            ...prevTransactions,
+            formattedRecord,
+          ]); // Update transactions langsung
+          setFilteredTransactions((prevFiltered) => [
+            ...prevFiltered,
+            formattedRecord,
+          ]); // Update filteredTransactions langsung
           applyFilters();
         }}
         accounts={accounts} // Kirim daftar akun
         categories={categories} // Kirim daftar kategori
       />
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+            <h3 className="text-lg font-bold mb-4">Confirm Delete</h3>
+            <p className="mb-6">Are you sure you want to delete this record?</p>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-grow flex flex-col">
         <div className="p-6 shadow-md bg-white">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-lg font-bold">Records</h1>
             <div className="flex items-center space-x-8">
+            <div>
+            <p className="font-bold text-lg">
+              Balance: IDR {Math.abs(calculateBalance()).toLocaleString()}
+            </p>
+            <p className={`text-${calculateBalance() < 0 ? "red" : "green"}-500`}>
+              {calculateBalance() < 0 ? "-IDR" : "+IDR"} {Math.abs(calculateBalance()).toLocaleString()}
+            </p>
+          </div>
               <div className="relative">
                 <button
                   onClick={() => setShowDateFilter(!showDateFilter)}
@@ -462,10 +511,7 @@ export default function RecordsDashboard() {
 
               <select
                 value={sortOption}
-                onChange={(e) => {
-                  setSortOption(e.target.value);
-                  applyFilters();
-                }}
+                onChange={(e) => handleSortChange(e.target.value)} // Ganti pemanggilan fungsi
                 className="h-10 px-4 border rounded"
               >
                 <option>Time (newest first)</option>
@@ -510,58 +556,89 @@ export default function RecordsDashboard() {
               .map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="flex justify-between items-center bg-white p-4 mb-4 rounded shadow"
+                  className="grid grid-cols-5 gap-4 bg-white p-4 mb-4 rounded shadow items-center"
                 >
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                      <span className="text-red-500 text-lg">
-                        {getCategoryEmoji(transaction.category)}
-                      </span>
-                    </div>
-                    <div>
+                  {/* Kolom 1: Kategori dan Tanggal */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                        <span className="text-red-500 text-lg">
+                          {getCategoryEmoji(transaction.category)}
+                        </span>
+                      </div>
                       <h3 className="font-bold text-gray-700">
                         {transaction.category}
                       </h3>
-                      {transaction.notes && (
-                        <p className="text-sm text-gray-500 italic">
-                          Note: {transaction.notes}
-                        </p>
-                      )}
-                      <p className="text-sm text-gray-500">
-                        {transaction.date
-                          ? new Intl.DateTimeFormat("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            }).format(new Date(transaction.date))
-                          : "No Date Available"}
-                      </p>
                     </div>
+                    <p className="text-sm text-gray-500">
+                      {transaction.date
+                        ? new Intl.DateTimeFormat("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          }).format(new Date(transaction.date))
+                        : "No Date Available"}
+                    </p>
                   </div>
 
-                  <div className="text-right">
+                  {/* Kolom 2: Notes */}
+                  <div>
                     <p className="text-sm text-gray-700">
-                      <strong>Account:</strong> {transaction.account}
+                      {transaction.notes || ""}
                     </p>
-                    <div
-                      className={`font-bold ${
-                        transaction.type === "income"
-                          ? "text-green-500"
-                          : transaction.type === "expense"
+                  </div>
+
+                  {/* Kolom 3: Account */}
+                  <div className="text-right">
+                    {transaction.type === "transfer" ? (
+                      <p className="text-sm font-bold text-gray-700">
+                        {transaction.accountFrom && transaction.accountTo
+                          ? `${transaction.accountFrom} → ${transaction.accountTo}`
+                          : "No Account From → No Account To"}
+                      </p>
+                    ) : transaction.type === "income" ? (
+                      <p className="text-sm font-bold text-gray-700">
+                        To Account: {transaction.accountTo || "No Account To"}
+                      </p>
+                    ) : (
+                      <p className="text-sm font-bold text-gray-700">
+                        From Account:{" "}
+                        {transaction.accountFrom || "No Account From"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Kolom 4: Amount */}
+                  <div className="text-right">
+                    <p
+                      className={`text-lg font-bold ${
+                        transaction.amount < 0
                           ? "text-red-500"
-                          : ""
+                          : "text-green-500"
                       }`}
                     >
-                      {transaction.type === "income"
-                        ? "+"
-                        : transaction.type === "expense"
-                        ? "-"
-                        : ""}
-                      IDR {Math.abs(transaction.amount).toLocaleString()}
-                    </div>
+                      {transaction.amount < 0 ? "-IDR " : "+IDR "}
+                      {Math.abs(transaction.amount).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* Kolom 5: Actions */}
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => handleEditRecord(transaction)}
+                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRecord(transaction)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
               ))
