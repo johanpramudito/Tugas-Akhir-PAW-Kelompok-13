@@ -1,16 +1,29 @@
 const mongoose = require('mongoose');
 
 const recordSchema = new mongoose.Schema({
-  account: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  toAccountId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Account', 
+    required: function() { return this.type === 'Transfer'; } 
+  }, 
   type: { type: String, enum: ['Expense', 'Income', 'Transfer'], required: true },
-  amount: { type: Number, required: true },
+  amount: { 
+    type: Number, 
+    required: true,
+    validate: {
+      validator: function(value) {
+        return value >= 0;
+      },
+      message: 'Amount cannot be negative.'
+    }
+  },
   category: {
     type: String,
-    enum: ['Food & Beverages', 'Shopping', 'Housing', 'Transport', 'Entertainment', 'Recreation'],
+    enum: ['Food & Beverages', 'Shopping', 'Housing', 'Transport', 'Entertainment', 'Recreation', 'Income', 'Transfer'],
     required: function() { return this.type === 'Expense'; } // Hanya wajib untuk Expense
   },
-  toAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' }, 
-  date: { type: Date, default: Date.now },
+  dateTime: { type: Date, default: Date.now },
   note: String,
   location: String
 });
