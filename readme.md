@@ -18,3 +18,12 @@ Tugas ini dibuat untuk memenuhi syarat penilaian tugas akhir mata kuliah Pengemb
 5. Bilang kalau ingin melakukan pull request
 
 Jangan lupa untuk download .env di grup
+
+### link video
+
+
+### link slide atau ppt
+https://www.canva.com/design/DAGXenuBzi8/Dum-mDt2pR-81STz3JkkZg/edit
+
+
+### link web app
