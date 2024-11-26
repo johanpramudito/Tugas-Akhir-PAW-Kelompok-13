@@ -294,8 +294,6 @@ export default function RecordsDashboard() {
         category: recordType === 'Expense' ? newRecord.category : recordType,
         amount: parseFloat(newRecord.amount.toString()),
       };
-
-      console.log('Record to save:', recordToSave);
   
       if (!recordToSave.accountId) {
         console.error('No account selected');
