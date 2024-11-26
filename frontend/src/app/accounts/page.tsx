@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import useAutoLogout from "../../../hook/useAutoLogout";
@@ -75,15 +76,8 @@ export default function Account() {
       const response = await apiAccount.getAccounts(userId);
       setAccounts(response.data);
       setAllAccounts(response.data); // Store the fetched accounts for searching
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        // Handle case where no accounts are found
-        console.warn('No accounts found for this user.');
-        setAccounts([]); // Set empty accounts array
-        setAllAccounts([]); // Clear allAccounts array
-      } else {
-        console.error('Error fetching accounts:', error);
-      }
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
     }
   };
 
@@ -182,9 +176,7 @@ const filterAndSortAccounts = (search: string, sort: string) => {
       } catch (error) {
         console.error("Error deleting account:", error);
       } finally {
-        fetchAccounts();
         setIsDeleteModalOpen(false);
-        resetForm();
         setAccountToDelete(null);
       }
     }
@@ -231,7 +223,7 @@ const filterAndSortAccounts = (search: string, sort: string) => {
           <h2 className="text-xl font-bold mb-4">Accounts</h2>
           <button
             onClick={handleOpenModal}
-            className="px-4 py-2 mb-4 rounded-lg bg-[#17CF97] text-white hover:bg-green-700 w-full"
+            className="px-4 py-2 mb-4 rounded-lg bg-[#17CF97] text-white hover:bg-green-700"
           >
             + Add
           </button>
@@ -364,7 +356,7 @@ const filterAndSortAccounts = (search: string, sort: string) => {
               </div>
               <button
                 type="submit"
-                className="w-full bg-[#17CF97] text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
                 {isEditMode ? 'Save Changes' : 'Add Account'}
               </button>

@@ -39,6 +39,8 @@ const updateRecord = async (req, res) => {
   const { id } = req.params;
   const { type, amount, category, note, location, toAccountId, accountId, dateTime } = req.body;
 
+  const numericAmount = parseInt(amount, 10); // Pastikan amount adalah angka
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -53,7 +55,7 @@ const updateRecord = async (req, res) => {
       return res.status(404).json({ message: 'Original account not found' });
     }
 
-    // Revert the original transaction
+    // Kembalikan transaksi sebelumnya
     if (record.type === 'Expense') {
       originalAccount.balance += record.amount;
     } else if (record.type === 'Income') {
@@ -80,19 +82,19 @@ const updateRecord = async (req, res) => {
       }
     }
 
-    // Update record fields
+    // Perbarui field record
     if (type) record.type = type;
-    if (amount !== undefined) record.amount = amount;
+    if (amount !== undefined) record.amount = numericAmount; // Perbarui dengan angka
     if (category) record.category = category;
     if (note) record.note = note;
     if (location) record.location = location;
     if (accountId) record.accountId = accountId;
     if (toAccountId) record.toAccountId = toAccountId;
 
-    // Update `dateTime` or set to current if not provided
+    // Perbarui `dateTime` atau gunakan waktu saat ini jika tidak disediakan
     record.dateTime = dateTime ? new Date(dateTime) : new Date();
 
-    // Clear fields based on type
+    // Hapus field berdasarkan jenis transaksi
     if (type === 'Expense') {
       record.toAccountId = null;
     } else if (type === 'Income') {
@@ -102,20 +104,20 @@ const updateRecord = async (req, res) => {
       record.category = "Transfer";
     }
 
-    // Apply new transaction
+    // Terapkan transaksi baru
     if (type === 'Expense' || (!type && record.type === 'Expense')) {
-      targetAccount.balance -= amount;
+      targetAccount.balance -= numericAmount;
     } else if (type === 'Income' || (!type && record.type === 'Income')) {
-      targetAccount.balance += amount;
+      targetAccount.balance += numericAmount;
     } else if (type === 'Transfer' || (!type && record.type === 'Transfer')) {
-      targetAccount.balance -= amount;
+      targetAccount.balance -= numericAmount;
 
       const targetToAccount = await Account.findById(toAccountId || record.toAccountId).session(session);
       if (!targetToAccount) {
         return res.status(404).json({ message: 'Target destination account not found' });
       }
 
-      targetToAccount.balance += amount;
+      targetToAccount.balance += numericAmount;
       await targetToAccount.save({ session });
     }
 
@@ -131,7 +133,7 @@ const updateRecord = async (req, res) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('Error updating record:', error); // Log the error for debugging
+    console.error('Error updating record:', error); // Log error untuk debugging
     res.status(500).json({
       message: 'Error updating record',
       error: error.message
@@ -140,5 +142,6 @@ const updateRecord = async (req, res) => {
     session.endSession();
   }
 };
+
 
 module.exports = { updateAccount, updateRecord };

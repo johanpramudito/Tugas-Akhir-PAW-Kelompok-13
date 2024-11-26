@@ -70,15 +70,15 @@ async function addRecord(req, res) {
 // Fungsi untuk transfer antar akun
 async function addTransfer(req, res) {
   try {
-    const { AccountId, toAccountId, amount, note, location } = req.body;
+    const { accountId, toAccountId, amount, note, location } = req.body;
 
-    console.log("Transfer request:", { AccountId, toAccountId, amount });
+    console.log("Transfer request:", { accountId, toAccountId, amount });
 
-    const fromAccount = await Account.findById(AccountId);
+    const fromAccount = await Account.findById(accountId);
     const toAccount = await Account.findById(toAccountId);
 
     if (!fromAccount) {
-      console.error(`From account not found: ${AccountId}`);
+      console.error(`From account not found: ${accountId}`);
       return res.status(404).json({ message: 'Source account not found' });
     }
 
@@ -88,13 +88,13 @@ async function addTransfer(req, res) {
     }
 
     if (fromAccount.balance < amount) {
-      console.error(`Insufficient balance in source account: ${AccountId}`);
+      console.error(`Insufficient balance in source account: ${accountId}`);
       return res.status(400).json({ message: 'Insufficient balance in the source account' });
     }
 
     // Proceed with transfer
     const transferRecord = new Record({
-      accountId: AccountId,
+      accountId: accountId,
       type: 'Transfer',
       amount,
       toAccountId: toAccountId,
@@ -112,7 +112,7 @@ async function addTransfer(req, res) {
 
     res.status(201).json({ message: 'Transfer completed successfully', transferRecord });
   } catch (error) {
-    console.error(`Error in transfer from accountId ${req.body.AccountId} to ${req.body.toAccountId}: ${error.message}`);
+    console.error(`Error in transfer from accountId ${req.body.accountId} to ${req.body.toAccountId}: ${error.message}`);
     res.status(500).json({ message: 'Error completing transfer', error: error.message });
   }
 };
