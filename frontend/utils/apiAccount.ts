@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/accounts';
+const API_URL = 'https://backend-tugas-akhir-paw-kelompok-13.vercel.app/api/accounts';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
