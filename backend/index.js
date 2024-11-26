@@ -24,7 +24,7 @@ app.use(express.urlencoded({extended: false}));
 app.use(cors());
 
 // MONGODB CONNECTION
-if (!process.env.MONGODB_URI) {
+if (!process.env.DATABASE_URL) {
   throw Error("Database connection string not found");
 }
 mongoose.connect(process.env.MONGODB_URI)
