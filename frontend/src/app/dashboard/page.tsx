@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Loading from "../components/Loading";
 import Container from "../components/Container";
 import AutoLogoutModal from "../components/AutoLogoutModal";
-import api from "@utils/apiAccount";
+import apiAccount from "@utils/apiAccount";
 import apiRecord from "@utils/apiRecord";
 import { useUserContext } from "@/context/UserContext";
 import { FiEdit, FiTrash } from "react-icons/fi";
@@ -98,7 +98,7 @@ export default function Dashboard() {
   const fetchAccounts = async () => {
     if (!userId) return;
     try {
-      const response = await api.getAccounts(userId);
+      const response = await apiAccount.getAccounts(userId);
       setAccounts(response.data);
       console.log(response.data);
     } catch (error) {
@@ -111,7 +111,7 @@ export default function Dashboard() {
       if (!userId) return;
   
       // Ambil data akun berdasarkan userId
-      const AccountResponse = await api.getAccounts(userId);
+      const AccountResponse = await apiAccount.getAccounts(userId);
       const accounts = AccountResponse.data;
   
       // Hitung initialAmount dari akun yang dipilih (jika ada)
@@ -239,10 +239,10 @@ export default function Dashboard() {
     try {
       if (selectedAccount) {
         // Edit existing account
-        await api.updateAccount(selectedAccount._id, newAccount);
+        await apiAccount.updateAccount(selectedAccount._id, newAccount);
       } else {
         // Add new account
-        await api.addAccount(userId, newAccount);
+        await apiAccount.addAccount(userId, newAccount);
       }
 
       fetchAccounts();
@@ -271,7 +271,7 @@ export default function Dashboard() {
   const handleDeleteAccount = async () => {
     if (accountToDelete) {
       try {
-        await api.deleteAccount(accountToDelete);
+        await apiAccount.deleteAccount(accountToDelete);
         setAccounts(
           accounts.filter((account) => account._id !== accountToDelete)
         );
