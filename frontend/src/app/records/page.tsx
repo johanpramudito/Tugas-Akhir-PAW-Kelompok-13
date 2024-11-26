@@ -11,7 +11,7 @@ import AutoLogoutModal from "../components/AutoLogoutModal";
 import apiAccount from "@utils/apiAccount";
 import apiRecord from "@utils/apiRecord";
 import { FaChevronDown, FaChevronRight } from "react-icons/fa"; // Import icons from react-icons
-export const revalidate = 'force-cache'
+export const revalidate = '60'
 
 
 type Record = {
