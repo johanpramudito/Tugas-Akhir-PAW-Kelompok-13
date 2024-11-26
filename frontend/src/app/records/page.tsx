@@ -17,7 +17,7 @@ type Record = {
   dateTime: string;
   accountId: Account;
   toAccountId: Account;
-  type: "Transfer" | "Income" | "Expense";
+  type: string;
   note: string;
   location: string;
 }
@@ -41,7 +41,6 @@ type Account = {
     balance: number;
   };
 
-const accounts = ["Cash", "Debit Card", "Credit Card"];
 
 export default function RecordsDashboard() {
   const { showModal, countdown, resetTimer } = useAutoLogout(10 * 60 * 1000); // 10 minutes
@@ -57,10 +56,6 @@ export default function RecordsDashboard() {
   const [recordType, setRecordType] = useState<string>('Expense');
   
 
-
-
-
-  
   const predefinedRanges = [
     { label: "Today", start: new Date().toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
     { label: "Last 7 days", start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
@@ -93,9 +88,6 @@ export default function RecordsDashboard() {
   const [isAccountsDropdownVisible, setIsAccountsDropdownVisible] = useState(false);
   const [isCategoriesDropdownVisible, setIsCategoriesDropdownVisible] = useState(false);
   
-
-  
-
   // Initialize user data
   useEffect(() => {
     const initializeUser = async () => {
@@ -126,10 +118,12 @@ export default function RecordsDashboard() {
   
     try {
       const response = await apiAccount.getAccounts(userId);
+
+      
       setAccounts(response.data);
       setAllAccounts(response.data); // Store the fetched accounts for searching
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      if ((error as any).response?.status === 404) {
         // Handle case where no accounts are found
         console.warn('No accounts found for this user.');
         setAccounts([]); // Set empty accounts array
@@ -140,25 +134,60 @@ export default function RecordsDashboard() {
     }
   };
 
-  // Dummy fetch records function (replace with actual API call)
   const fetchRecords = async () => {
     if (!userId) return;
   
     try {
       const response = await apiRecord.getRecords(userId);
-      setRecords(response.data);
-      setAllRecords(response.data); // Store the fetched accounts for searching
+  
+      // Process transfer records to create separate entries
+      const processedRecords = response.data.flatMap((record: Record) => {
+        if (record.type === "Transfer") {
+          // Create two separate records for transfer
+          return [
+            {
+              ...record,
+              amount: -Math.abs(record.amount), // Negative for source account
+              type: "Transfer (Outgoing)",
+            },
+            {
+              ...record,
+              amount: Math.abs(record.amount), // Positive for destination account
+              accountId: record.toAccountId,
+              toAccountId: record.accountId,
+              type: "Transfer (Incoming)",
+            },
+          ];
+        }else if (record.type === "Expense") {
+          return [
+            {
+              ...record,
+              amount: -Math.abs(record.amount), // Negative for source account
+            },
+          ];
+        }else if (record.type === "Income"){
+          return [
+            {
+              ...record,
+              amount: +Math.abs(record.amount), // Negative for source account
+            },
+          ];
+        }
+        return [record];
+      });
+  
+      setRecords(processedRecords);
+      setAllRecords(processedRecords);
     } catch (error: any) {
       if (error.response?.status === 404) {
-        // Handle case where no accounts are found
         console.warn('No Records found for this user.');
-        setRecords([]); // Set empty accounts array
-        setAllRecords([]); // Clear allAccounts array
+        setRecords([]);
+        setAllRecords([]);
       } else {
         console.error('Error fetching accounts:', error);
       }
     }
-  };
+  };  
 
   const getDisplayDate = (
     selectedRange: string | null,
@@ -224,13 +253,17 @@ export default function RecordsDashboard() {
   
     // Apply category filter
     if (category !== "All Categories") {
-      filtered = filtered.filter((record) => record.category === category);
+      filtered = filtered.filter((record) => 
+        record.category === category || 
+        // For transfers, use the original category if needed
+        (record.type.includes("Transfer") && category === "Transfer")
+      );
     }
   
     // Apply account filter
     if (account !== "All Accounts") {
-      filtered = filtered.filter(
-        (record) => record.accountId.name === account || record.toAccountId?.name === account
+      filtered = filtered.filter((record) => 
+        record.accountId.name === account
       );
     }
   
@@ -292,6 +325,7 @@ export default function RecordsDashboard() {
         accountId: newRecord.accountId || (accounts.length ? accounts[0]._id : null),
         toAccountId: recordType === 'Transfer' ? newRecord.toAccountId : null,
         category: recordType === 'Expense' ? newRecord.category : recordType,
+        amount: parseFloat(newRecord.amount.toString())
       };
   
       if (!recordToSave.accountId) {
@@ -564,9 +598,9 @@ export default function RecordsDashboard() {
 
 
       {/* Records List */}
-      {records.map((record) => (
+      {records.map((record, index) => (
         <div
-          key={record._id}
+          key={`${record._id}-${index}`}
           className="flex justify-between items-center bg-white p-4 mb-4 rounded-lg shadow-sm"
         >
           <div className="flex w-full items-center">
@@ -589,21 +623,25 @@ export default function RecordsDashboard() {
             </div>
 
             {/* Account Info */}
-                <div className="flex-1 text-center">
-                {record.type === "Transfer" ? (
-                    <p className="text-md font-semibold text-blue-600">
-                    {record.accountId.name} → {record.toAccountId?.name}
-                    </p>
-                ) : record.type === "Income" ? (
-                    <p className="text-md font-semibold text-blue-600">
-                    {record.accountId.name}
-                    </p>
-                ) : record.type === "Expense" ? (
-                    <p className="text-md font-semibold text-blue-600">
-                    {record.accountId.name} 
-                    </p>
-                ) : null}
-                </div>
+            <div className="flex-1 text-center">
+              {record.type === "Transfer (Outgoing)" ? (
+                <p className="text-md font-semibold text-blue-600">
+                  {record.accountId.name}
+                </p>
+              ) : record.type === "Transfer (Incoming)" ? (
+                <p className="text-md font-semibold text-blue-600">
+                  {record.accountId?.name}
+                </p>
+              ) : record.type === "Income" ? (
+                <p className="text-md font-semibold text-blue-600">
+                  {record.accountId.name}
+                </p>
+              ) : record.type === "Expense" ? (
+                <p className="text-md font-semibold text-blue-600">
+                  {record.accountId.name}
+                </p>
+              ) : null}
+            </div>
 
             {/* Notes */}
             <div className="flex-1 text-center">
@@ -731,20 +769,23 @@ export default function RecordsDashboard() {
             <div>
               <label className="block text-gray-700">Category</label>
               <select
-                name="category"
-                value={newRecord.category}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
-                required
-              >
-                {['Food & Beverages', 'Shopping', 'Housing', 'Transport', 'Entertainment', 'Recreation'].map(
-                  (category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  )
-                )}
-              </select>
+              name="category"
+              value={newRecord.category}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+              required
+            >
+              <option value="" disabled>
+                Choose
+              </option>
+              {['Food & Beverages', 'Shopping', 'Housing', 'Transport', 'Entertainment', 'Recreation'].map(
+                (category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                )
+              )}
+            </select>
             </div>
           )}
 
