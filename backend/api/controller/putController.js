@@ -91,7 +91,7 @@ const updateRecord = async (req, res) => {
     if (accountId) record.accountId = accountId;
     if (toAccountId) record.toAccountId = toAccountId;
 
-    // Perbarui dateTime atau gunakan waktu saat ini jika tidak disediakan
+    // Perbarui `dateTime` atau gunakan waktu saat ini jika tidak disediakan
     record.dateTime = dateTime ? new Date(dateTime) : new Date();
 
     // Hapus field berdasarkan jenis transaksi

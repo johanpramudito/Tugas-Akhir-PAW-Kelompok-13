@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,7 +42,6 @@ type Account = {
     initialAmount: number;
     balance: number;
   };
-
 
 export default function RecordsDashboard() {
   const { showModal, countdown, resetTimer } = useAutoLogout(10 * 60 * 1000); // 10 minutes
@@ -315,21 +316,28 @@ export default function RecordsDashboard() {
   
 
   const handleAddRecord = async () => {
-    if(!userId) return;
+    if (!userId) return;
   
     try {
-      // Ensure required fields are set
+      // Pastikan semua field yang diperlukan diatur
       const recordToSave = {
         ...newRecord,
-        type: recordType, // Use the current recordType
-        accountId: newRecord.accountId || (accounts.length ? accounts[0]._id : null),
-        toAccountId: recordType === 'Transfer' ? newRecord.toAccountId : null,
+        type: recordType, // Gunakan recordType saat ini
+        accountId: newRecord.accountId || (accounts.length ? accounts[0]._id : ''),
+        toAccountId: recordType === 'Transfer' ? newRecord.toAccountId || '' : '',
         category: recordType === 'Expense' ? newRecord.category : recordType,
         amount: parseFloat(newRecord.amount.toString())
       };
+
+      console.log('Record to save:', recordToSave);
   
       if (!recordToSave.accountId) {
         console.error('No account selected');
+        return;
+      }
+  
+      if (recordType === 'Transfer' && !recordToSave.toAccountId) {
+        console.error('No target account selected for transfer');
         return;
       }
   
@@ -337,8 +345,13 @@ export default function RecordsDashboard() {
         // Edit existing record
         await apiRecord.updateRecord(selectedRecord._id, recordToSave);
       } else {
-        // Add new record
-        await apiRecord.addRecord(recordToSave);
+        if (recordType === 'Transfer') {
+          // Tambahkan transfer baru
+          await apiRecord.addTransfer(recordToSave);
+        } else {
+          // Tambahkan record baru (Income/Expense)
+          await apiRecord.addRecord(recordToSave);
+        }
       }
   
       fetchRecords();
@@ -348,6 +361,7 @@ export default function RecordsDashboard() {
       console.error('Error saving record:', error);
     }
   };
+  
 
   const handleEditRecord = (record: Record) => {
     setSelectedRecord(record);
@@ -359,12 +373,13 @@ export default function RecordsDashboard() {
       note: record.note,
       location: record.location,
       accountId: record.accountId._id,
-      toAccountId: record.toAccountId?._id,
-      dateTime: record.dateTime
+      toAccountId: record.toAccountId?._id || '', // Pastikan ada nilai default untuk transfer
+      dateTime: record.dateTime,
     });
     setIsEditMode(true);
     setIsModalOpen(true);
   };
+  
 
   const handleDeleteRecord = async () => {
     if (recordToDelete) {
@@ -656,7 +671,7 @@ export default function RecordsDashboard() {
             {/* Amount */}
             <div className="flex-1 text-right">
               <p className={`font-bold ${record.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
-                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount).toLocaleString("id-ID")}
+                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount)}
               </p>
             </div>
 
