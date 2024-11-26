@@ -5,8 +5,11 @@ import Loading from "../components/Loading";
 import Container from "../components/Container";
 import AutoLogoutModal from "../components/AutoLogoutModal";
 import api from "@utils/apiAccount";
+import apiRecord from "@utils/apiRecord";
 import { useUserContext } from "@/context/UserContext";
 import { FiEdit, FiTrash } from "react-icons/fi";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { Doughnut } from "react-chartjs-2"; // Import Doughnut
 
 type Account = {
   _id: string;
@@ -32,6 +35,39 @@ export default function Dashboard() {
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const { currentUser } = useUserContext();
+  const [chartData, setChartData] = useState<{
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      backgroundColor: string[];
+      hoverOffset: number;
+    }[];
+  } | null>(null);
+  const [totalExpense, setTotalExpense] = useState(0);
+  type Record = {
+    _id: string;
+    category: string;
+    note?: string;
+    amount: number;
+    dateTime: string;
+    type: string;
+  };
+
+  const [latestRecords, setLatestRecords] = useState<Record[]>([]);
+  const [income, setIncome] = useState(0);
+  const [expense, setExpense] = useState(0);
+
+  const categoryColors = {
+    "Food & Beverages": "#FF6384",
+    Shopping: "#36A2EB",
+    Housing: "#FFCE56",
+    Transport: "#4BC0C0",
+    Entertainment: "#9966FF",
+    Recreation: "#FF9F40",
+    Income: "#4CAF50",
+    Transfer: "#F44336",
+  };
 
   // Initialize user data
   useEffect(() => {
@@ -60,20 +96,139 @@ export default function Dashboard() {
   // Function to fetch accounts
   const fetchAccounts = async () => {
     if (!userId) return;
-
     try {
       const response = await api.getAccounts(userId);
       setAccounts(response.data);
-      setAccounts(response.data);
+      console.log(response.data);
     } catch (error) {
       console.error("Error fetching accounts:", error);
     }
   };
 
+  const fetchRecords = async () => {
+    try {
+      if (!userId) return;
+
+      // Ambil data akun berdasarkan userId
+      const AccountResponse = await api.getAccounts(userId);
+      const accounts = AccountResponse.data;
+
+      // Ambil initialAmount dari akun dengan tipe "Cash" dan "Bank"
+      const initialAmountFromAccounts = accounts
+        .filter(
+          (account: Account) =>
+            account.type === "Cash" || account.type === "Bank"
+        )
+        .reduce(
+          (acc: number, account: Account) => acc + (account.initialAmount || 0),
+          0
+        ); // Jumlahkan initialAmount dari semua akun Cash dan Bank
+
+      // Ambil data records (Expense dan Income) berdasarkan userId
+      const response = await apiRecord.getRecordByUser(userId);
+      const records = response.data;
+
+      // Filter untuk hanya mengambil records bertipe "Expense"
+      const expenseRecords = records.filter(
+        (record: Record) => record.type === "Expense"
+      );
+
+      // Hitung total expense
+      const totalExpense = expenseRecords.reduce(
+        (sum: number, record: Record) => sum + (record.amount || 0), // Pastikan amount ada
+        0
+      );
+
+      // Set total expense ke state
+      setTotalExpense(totalExpense);
+
+      // Hitung total income, termasuk initialAmount dari semua akun "Cash" dan "Bank"
+      const incomeRecords = records.filter(
+        (record: Record) => record.type === "Income"
+      );
+
+      const totalIncome = incomeRecords.reduce(
+        (acc: number, record: Record) => acc + (record.amount || 0), // Pastikan amount ada
+        initialAmountFromAccounts // Tambahkan initialAmount dari semua akun Cash dan Bank
+      );
+
+      // Set nilai total Income dan Expense ke state
+      setIncome(totalIncome);
+      setExpense(totalExpense);
+
+      // Kategori chart: group by category dan total expense per kategori
+      const categories: { [key: string]: number } = {};
+      expenseRecords.forEach((record: Record) => {
+        categories[record.category] =
+          (categories[record.category] || 0) + (record.amount || 0);
+      });
+
+      const labels = Object.keys(categories);
+      const data = Object.values(categories);
+
+      // Set chart data
+      setChartData({
+        labels,
+        datasets: [
+          {
+            label: "Expenses by Category",
+            data,
+            backgroundColor: labels.map(
+              (label) =>
+                categoryColors[label as keyof typeof categoryColors] ||
+                "#CCCCCC" // Default warna jika tidak ada match
+            ),
+            hoverOffset: 4,
+          },
+        ],
+      });
+
+      // Urutkan data berdasarkan dateTime secara menurun
+      const sortedRecords = records.sort(
+        (a: Record, b: Record) =>
+          new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
+      );
+
+      // Ambil 5 record terbaru
+      const latestRecords = sortedRecords.slice(0, 5);
+      setLatestRecords(latestRecords); // Simpan data untuk dirender
+    } catch (error) {
+      console.error("Error fetching records:", error);
+    }
+  };
+
+  // const fetchData = async () => {
+  //   try {
+  //     if (!userId) return;
+  //     const response = await apiRecord.getRecordByUser(userId); // Ambil data dari API
+  //     const records = response.data;
+
+  //     // Hitung total Income dan Expense
+  //     const totalIncome = records
+  //       .filter((record: Record) => record.type === "Income")
+  //       .reduce((acc: number, record: Record) => acc + record.amount, 0);
+
+  //     const totalExpense = records
+  //       .filter((record: Record) => record.type === "Expense")
+  //       .reduce((acc: number, record: Record) => acc + record.amount, 0);
+
+  //     setIncome(totalIncome); // Simpan total Income
+  //     setExpense(totalExpense); // Simpan total Expense
+  //   } catch (error) {
+  //     console.error("Error fetching records:", error);
+  //   }
+  // };
+
   useEffect(() => {
     // Set loading to false after the component mounts
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchRecords();
+    }
+  }, [userId]);
 
   if (loading) {
     return <Loading />; // Show loading screen while loading is true
@@ -164,15 +319,18 @@ export default function Dashboard() {
     resetForm();
   };
 
+  ChartJS.register(ArcElement, Tooltip, Legend);
+
   return (
     <div>
       <Container>
         <div className="h-fit w-full p-4 bg-[#fafbfd] gap-y-4 flex flex-col">
-          <div className="lg:flex lg:flex-row grid grid-cols-2 gap-x-3 gap-y-3">
-            <div className="flex flex-row bg-gray-100 p-4 rounded-lg shadow-md w-full gap-x-3">
+          <div className="lg:flex lg:flex-row flex-col w-full gap-x-3 gap-y-3 items-center justify-center">
+            <div className="flex lg:flex-row flex-col bg-gray-100 p-4 rounded-lg shadow-md w-full gap-y-3 lg:gap-y-0 lg:gap-x-3">
               {accounts.map((account) => (
-                <div
+                <button
                   key={account._id}
+                  onClick={() => setSelectedAccount(account)} // Set selected account
                   className={`flex justify-between items-center p-4 rounded-lg shadow-sm w-full ${
                     account.type === "Bank"
                       ? "bg-blue-200"
@@ -225,7 +383,7 @@ export default function Dashboard() {
                       <FiTrash size={20} />
                     </button>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
             <button onClick={handleOpenModal}>
@@ -235,115 +393,145 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        <div className="grid lg:grid-cols-4 grid-cols-2 gap-4 auto-rows-fr">
-            <div className="p-5 rounded-lg bg-gray-200 font">
-              <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
-                Expense Structure
-              </h2>
-              <div className="w-full h-[1px] bg-black"></div>
-              <div>
-                <h3 className="font-GeistVF font-medium text-lg text-gray-500">
-                  This Month
-                </h3>
-                <h3 className="font-GeistMonoVF text-black text-2xl">
-                  -Rp3.000.000
-                </h3>
-                {/* <DoughnutChart data={dummyData}></DoughnutChart> */}
-              </div>
+        <div className="flex lg:flex-row flex-col gap-4 auto-rows-fr justify-center ">
+          <div className="p-5 rounded-lg bg-gray-200 w-full lg:w-[500px]">
+            <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
+              Expense Structure
+            </h2>
+            <div className="w-full h-[1px] bg-black"></div>
+            <div>
+              <h3 className="font-GeistMonoVF text-black text-2xl">
+                {totalExpense === 0
+                  ? "No Expenses"
+                  : `Rp${totalExpense.toLocaleString("id-ID")}`}
+              </h3>
+
+              {chartData ? (
+                <Doughnut
+                  data={chartData}
+                  options={{
+                    cutout: "50%", // Ukuran lubang tengah (50% dari diameter chart)
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: "bottom",
+                      },
+                    },
+                  }}
+                />
+              ) : (
+                <div>Loading chart...</div>
+              )}
             </div>
-            <div className="p-5 rounded-lg bg-gray-200">
-              <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
-                Last Records
-              </h2>
-              <div className="w-full h-[1px] bg-black mb-2"></div>
-              <div className="flex flex-col gap-y-2">
-                {/* <div>
-                  <div className="flex flex-col gap-y-2">
-                    {records.map((record) => (
-                      <div
-                        key={record.id}
-                        className="flex flex-row items-center justify-between p-2 bg-white rounded-lg"
-                      >
-                        <div className="flex flex-row justify-center items-center gap-x-3">
-                          <div className="flex justify-center items-center w-7 h-7 rounded-full bg-red-300">
-                            <div style={{ color: "#FFFFFFF" }}>
-                              <MdFastfood />
-                            </div>
-                          </div>
-                          <div className="flex flex-col">
-                            <h2>{record.category}</h2>
-                            <h3>{record.accountId}</h3>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <h3>Rp.{record.amount}</h3>
-                          <h3>{new Date(record.date).toLocaleString()}</h3>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div> */}
-                <div>
-                  <div className="flex flex-row items-center justify-between p-2 bg-white rounded-lg  ">
+          </div>
+          <div className="p-5 rounded-lg bg-gray-200 w-full lg:w-[500px]">
+            <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
+              Last Records
+            </h2>
+            <div className="w-full h-[1px] bg-black mb-2"></div>
+            <div className="flex flex-col gap-y-2">
+              <div className="flex flex-col gap-y-4">
+                {latestRecords.map((record) => (
+                  <div
+                    key={record._id}
+                    className="flex flex-row items-center justify-between p-2 bg-white rounded-lg"
+                  >
                     <div className="flex flex-row justify-center items-center gap-x-3">
-                      <div className="flex justify-center items-center w-7 h-7 rounded-full bg-red-300">
-                        <div style={{ color: "#FFFFFFF" }}>
-                          {/* <MdFastfood /> */}
-                        </div>
-                      </div>
+                      <div
+                        className="flex justify-center items-center w-7 h-7 rounded-full"
+                        style={{
+                          backgroundColor:
+                            categoryColors[
+                              record.category as keyof typeof categoryColors
+                            ] || "#FF0000",
+                        }}
+                      ></div>
                       <div className="flex flex-col">
-                        <h2>Food & Beverage</h2>
-                        <h3>Cash</h3>
+                        <h2 className="xl:text-lg font-semibold">
+                          {record.category}
+                        </h2>
+                        <h3>{record.note || "No note"}</h3>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
-                      <h3>Rp.100.000</h3>
-                      <h3>19.00 21/10/2024</h3>
+                      <h3>Rp.{record.amount.toLocaleString("id-ID")}</h3>
+                      <h3>
+                        {new Date(record.dateTime).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        {new Date(record.dateTime).toLocaleDateString("id-ID")}
+                      </h3>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
-            <div className="p-5 rounded-lg bg-gray-200">
-              <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
-                Cash Flow
-              </h2>
-              <div className="w-full h-[1px] bg-black"></div>
-              <h3 className="font-GeistVF font-medium text-lg text-gray-500">
-                This Month
-              </h3>
-              <h3 className="font-GeistMonoVF text-black text-2xl">
-                Rp1.000.000
-              </h3>
-              <div>
-                <div className="flex flex-row justify-between">
-                  <h4>Income</h4>
-                  <h4>Rp.1.000.000</h4>
-                </div>
-                {/* <Progress value={90} /> */}
-              </div>
-              <div>
-                <div className="flex flex-row justify-between">
-                  <h4>Expense</h4>
-                  <h4>Rp.220.000</h4>
-                </div>
-                {/* <Progress value={5} /> */}
-              </div>
-            </div>
-            <div className="p-5 rounded-lg bg-gray-200">
-              <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
-                Balance Trend
-              </h2>
-              <div className="w-full h-[1px] bg-black"></div>
-              <h3 className="font-GeistVF font-medium text-lg text-gray-500">
-                Today
-              </h3>
-              <h3 className="font-GeistMonoVF text-black text-2xl">
-                Rp1.000.000
-              </h3>
-              {/* <LineChart /> */}
             </div>
           </div>
+          <div className="p-5 rounded-lg bg-gray-200 w-full lg:w-[500px]">
+            <h2 className="font-GeistVF font-semibold text-black text-3xl py-2">
+              Cash Flow
+            </h2>
+            <div className="w-full h-[1px] bg-black"></div>
+            <h3 className="font-GeistVF font-medium text-lg text-gray-500">
+              This Month
+            </h3>
+            <h3 className="font-GeistMonoVF text-black text-2xl">
+              Rp{income - expense > 0 ? income - expense : 0}
+            </h3>{" "}
+            {/* Menampilkan saldo bulan ini */}
+            {/* Income */}
+            <div>
+              <div className="flex flex-row justify-between">
+                <h4>Income</h4>
+                <h4>Rp{income.toLocaleString("id-ID")}</h4>{" "}
+                {/* Menampilkan total Income */}
+              </div>
+              <div className="relative pt-1">
+                <div className="flex mb-2 items-center justify-between">
+                  <span className="text-xs font-medium">Progress</span>
+                  <span className="text-xs font-medium">
+                    {((income / (expense + income)) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                {/* Progress bar untuk Expense dibandingkan dengan Income */}
+                <div className="flex mb-2 w-full h-2 bg-gray-200 rounded-full">
+                  <div
+                    className="h-full bg-green-500 rounded-full"
+                    style={{
+                      width: `${((income / (expense + income)) * 100).toFixed(0)}%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            {/* Expense */}
+            <div>
+              <div className="flex flex-row justify-between">
+                <h4>Expense</h4>
+                <h4>Rp{expense.toLocaleString("id-ID")}</h4>{" "}
+                {/* Menampilkan total Expense */}
+              </div>
+              <div className="relative pt-1">
+                <div className="flex mb-2 items-center justify-between">
+                  <span className="text-xs font-medium">Progress</span>
+                  <span className="text-xs font-medium">
+                    {(expense / (expense + income) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                {/* Progress bar untuk Expense dibandingkan dengan Income */}
+                <div className="flex mb-2 w-full h-2 bg-gray-200 rounded-full">
+                  <div
+                    className="h-full bg-red-500 rounded-full"
+                    style={{
+                      width: `${((expense / (expense + income)) * 100).toFixed(0)}%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </Container>
 
       {/* Add/Edit Account Modal */}
