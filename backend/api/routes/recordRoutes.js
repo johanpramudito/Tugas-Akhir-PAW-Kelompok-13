@@ -14,7 +14,7 @@ RecordRouter.get('/getRecord/:accountId', getRecordsByAccount);
 RecordRouter.get('/getRecordByUser/:userId', getRecordsByUser);
 
 // Route untuk menambahkan record
-RecordRouter.post('/addRecord/:accountId', addRecord);
+RecordRouter.post('/addRecord', addRecord);
 
 // Route untuk transfer antar akun
 RecordRouter.post('/addTransfer', addTransfer);

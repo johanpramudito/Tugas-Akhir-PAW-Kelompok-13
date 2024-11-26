@@ -1,652 +1,834 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Pencil, Trash2 } from "lucide-react"; // Import icons
-import AddRecordModal from "../components/dashboard/AddRecord";
+import { Pencil, Trash2 } from "lucide-react";
+import { useUserContext } from "@/context/UserContext";
+import Loading from "../components/Loading";
+import useAutoLogout from "../../../hook/useAutoLogout";
+import AutoLogoutModal from "../components/AutoLogoutModal";
+import apiAccount from "@utils/apiAccount";
+import apiRecord from "@utils/apiRecord";
+import { FaChevronDown, FaChevronRight } from "react-icons/fa"; // Import icons from react-icons
+
+type Record = {
+  _id: string;
+  category: string;
+  amount: number;
+  dateTime: string;
+  accountId: Account;
+  toAccountId: Account;
+  type: "Transfer" | "Income" | "Expense";
+  note: string;
+  location: string;
+}
+
+const categories = [
+  "Food & Beverages",
+  "Shopping",
+  "Housing",
+  "Transport",
+  "Entertainment",
+  "Recreation",
+  "Income",
+  "Transfer",
+];
+
+type Account = {
+    _id: string;
+    name: string;
+    type: string;
+    initialAmount: number;
+    balance: number;
+  };
+
+const accounts = ["Cash", "Debit Card", "Credit Card"];
 
 export default function RecordsDashboard() {
-  const [transactions, setTransactions] = useState([]);
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
-  const [selectedAccount, setSelectedAccount] = useState("All Accounts");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [sortOption, setSortOption] = useState("Time (newest first)");
-  const [showDateFilter, setShowDateFilter] = useState(false);
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
-  const [selectedRange, setSelectedRange] = useState("All Dates");
-  const [isCustomRange, setIsCustomRange] = useState(false);
+  const { showModal, countdown, resetTimer } = useAutoLogout(10 * 60 * 1000); // 10 minutes
+  const { currentUser } = useUserContext();
   const [loading, setLoading] = useState(true);
-  const [showAddRecordModal, setShowAddRecordModal] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [recordToDelete, setRecordToDelete] = useState(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [selectedRange, setSelectedRange] = useState("All");
+  const [isCustomRange, setIsCustomRange] = useState(false);
+  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [newRecord, setNewRecord] = useState({ category: '', type: 'Expense', amount: 0, dateTime: '', accountId: accounts.length ? accounts[0]._id : null, toAccountId: '', note: '',  location: ''});
+  const [recordType, setRecordType] = useState<string>('Expense');
+  
 
-  const categories = [
-    "All Categories",
-    "Food & Beverages",
-    "Shopping",
-    "Housing",
-    "Transport",
-    "Entertainment",
-    "Recreation",
-    "Income",
-    "Transfer",
-  ];
 
-  const accounts = ["All Accounts", "Cash", "Debit Card", "Credit Card"];
+
+
+  
   const predefinedRanges = [
-    { label: "Last 7 days", days: 7 },
-    { label: "Last 30 days", days: 30 },
-    { label: "Last 90 days", days: 90 },
-    { label: "Last 12 months", months: 12 },
-    { label: "Today", today: true },
-    { label: "This week", week: true },
-    { label: "This month", month: true },
-    { label: "This year", year: true },
-    { label: "All Dates", all: true },
+    { label: "Today", start: new Date().toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "Last 7 days", start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "Last 30 days", start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "This week", start: new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "Last 90 days", start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "This month", start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "Last 12 months", start: new Date(new Date().getFullYear() - 1, new Date().getMonth(), new Date().getDate()).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "This year", start: new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0], end: new Date().toISOString().split("T")[0] },
+    { label: "All", start: "2000-01-01", end: new Date().toISOString().split("T")[0] }, // Replace 2000-01-01 with your app's earliest date
   ];
+  
 
-  const handleEditRecord = (record) => {
-    setEditingRecord(record);
-    setShowAddRecordModal(true);
-  };
+  // Records state
+  const [records, setRecords] = useState<Record[]>([]);
+  const [allRecords, setAllRecords] = useState<Record[]>([]);
+  
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+  
+  // Filter states
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [selectedAccount, setSelectedAccount] = useState("All Accounts");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [sortType, setSortType] = useState("default");
+  const [isAccountsDropdownVisible, setIsAccountsDropdownVisible] = useState(false);
+  const [isCategoriesDropdownVisible, setIsCategoriesDropdownVisible] = useState(false);
+  
 
-  const handleDeleteRecord = (record) => {
-    setRecordToDelete(record);
-    setShowDeleteConfirm(true);
-  };
+  
 
-  const confirmDelete = () => {
-    if (recordToDelete) {
-      const newTransactions = transactions.filter(
-        (t) => t.id !== recordToDelete.id
-      );
-      setTransactions(newTransactions);
-      setFilteredTransactions(newTransactions);
-      setRecordToDelete(null);
-      setShowDeleteConfirm(false);
-    }
-  };
-
-  const handleSaveRecord = (updatedRecord) => {
-    if (editingRecord) {
-      // Update existing record
-      const newTransactions = transactions.map((t) =>
-        t.id === editingRecord.id
-          ? { ...updatedRecord, id: editingRecord.id }
-          : t
-      );
-      setTransactions(newTransactions);
-      setFilteredTransactions(newTransactions);
-      setEditingRecord(null);
-    } else {
-      // Add new record
-      const newRecord = {
-        ...updatedRecord,
-        id: Date.now().toString(), // Simple ID generation
-        accountFrom: updatedRecord.accountFrom || null,
-        accountTo: updatedRecord.accountTo || "No Account Specified",
-        date: updatedRecord.date
-          ? new Date(updatedRecord.date).toISOString()
-          : new Date().toISOString(),
-      };
-      setTransactions((prev) => [...prev, newRecord]);
-      setFilteredTransactions((prev) => [...prev, newRecord]);
-    }
-    applyFilters();
-  };
-
-  const getDisplayDate = (selectedRange, isCustomRange, dateRange) => {
-    if (!isCustomRange) {
-      return selectedRange;
-    }
-    const startDate = new Date(dateRange.start).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-    const endDate = new Date(dateRange.end).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-    return `${startDate} - ${endDate}`;
-  };
-
+  // Initialize user data
   useEffect(() => {
-    const dummyData = [
-      {
-        id: "1",
-        accountFrom: "Cash", // Tambahkan accountFrom
-        category: "Food & Beverages",
-        amount: -2135.0,
-        date: new Date("2024-11-22"),
-      },
-      {
-        id: "2",
-        accountTo: "Debit Card",
-        category: "Income",
-        amount: 1200.0,
-        date: new Date("2024-11-11"),
-      },
-    ];
-
-    setTimeout(() => {
-      setTransactions(dummyData);
-      setFilteredTransactions(dummyData);
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const applyFilters = () => {
-    let filtered = transactions;
-
-    if (selectedAccount !== "All Accounts") {
-      filtered = filtered.filter((transaction) => {
-        if (transaction.type === "transfer") {
-          return (
-            transaction.accountFrom === selectedAccount ||
-            transaction.accountTo === selectedAccount
-          );
+    const initializeUser = async () => {
+      try {
+        if (currentUser?.id) {
+          setUserId(currentUser?.id);
         }
-        if (transaction.type === "income") {
-          return transaction.accountTo === selectedAccount;
-        }
-        return transaction.accountFrom === selectedAccount; // Untuk expense
-      });
-    }
-
-    if (selectedCategory !== "All Categories") {
-      filtered = filtered.filter(
-        (transaction) => transaction.category === selectedCategory
-      );
-    }
-
-    if (dateRange.start && dateRange.end) {
-      if (!validateDateRange()) return; // Hentikan jika validasi gagal
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.date >= new Date(dateRange.start) &&
-          transaction.date <= new Date(dateRange.end)
-      );
-    }
-
-    if (sortOption === "Time (newest first)") {
-      filtered.sort((a, b) => b.date - a.date);
-    } else if (sortOption === "Time (oldest first)") {
-      filtered.sort((a, b) => a.date - b.date);
-    } else if (sortOption === "Amount (lowest first)") {
-      filtered.sort((a, b) => Math.abs(a.amount) - Math.abs(b.amount));
-    } else if (sortOption === "Amount (highest first)") {
-      filtered.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-    }
-
-    setFilteredTransactions(filtered);
-  };
-
-  const handleSortChange = (option) => {
-    setSortOption(option);
-    setFilteredTransactions((prevFiltered) => {
-      const sorted = [...prevFiltered];
-      if (option === "Time (newest first)") {
-        sorted.sort((a, b) => b.date - a.date);
-      } else if (option === "Time (oldest first)") {
-        sorted.sort((a, b) => a.date - b.date);
-      } else if (option === "Amount (lowest first)") {
-        sorted.sort((a, b) => Math.abs(a.amount) - Math.abs(b.amount));
-      } else if (option === "Amount (highest first)") {
-        sorted.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+        setLoading(false);
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        setLoading(false);
       }
-      return sorted;
-    });
+    };
+
+    initializeUser();
+  }, [currentUser]);
+
+  // Fetch records when userId is available
+  useEffect(() => {
+    if (userId) {
+      fetchAccounts();
+      fetchRecords();
+    }
+  }, [userId]);
+
+  const fetchAccounts = async () => {
+    if (!userId) return;
+  
+    try {
+      const response = await apiAccount.getAccounts(userId);
+      setAccounts(response.data);
+      setAllAccounts(response.data); // Store the fetched accounts for searching
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        // Handle case where no accounts are found
+        console.warn('No accounts found for this user.');
+        setAccounts([]); // Set empty accounts array
+        setAllAccounts([]); // Clear allAccounts array
+      } else {
+        console.error('Error fetching accounts:', error);
+      }
+    }
   };
 
-  const handlePredefinedRange = (range) => {
-    setIsCustomRange(false);
+  // Dummy fetch records function (replace with actual API call)
+  const fetchRecords = async () => {
+    if (!userId) return;
+  
+    try {
+      const response = await apiRecord.getRecords(userId);
+      setRecords(response.data);
+      setAllRecords(response.data); // Store the fetched accounts for searching
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        // Handle case where no accounts are found
+        console.warn('No Records found for this user.');
+        setRecords([]); // Set empty accounts array
+        setAllRecords([]); // Clear allAccounts array
+      } else {
+        console.error('Error fetching accounts:', error);
+      }
+    }
+  };
+
+  const getDisplayDate = (
+    selectedRange: string | null,
+    isCustomRange: boolean,
+    dateRange: { start: string; end: string }
+  ): string => {
+    if (isCustomRange) {
+      return `${dateRange.start} to ${dateRange.end}`;
+    }
+    return selectedRange || "Select Range";
+  };
+  
+
+  const handlePredefinedRange = (range: { label: string; start: string; end: string }): void => {
     setSelectedRange(range.label);
-
-    if (range.all) {
-      setDateRange({ start: "", end: "" });
-      setFilteredTransactions(transactions); // Reset semua filter
-    } else {
-      const now = new Date();
-      let start, end;
-
-      if (range.days) {
-        start = new Date();
-        start.setDate(now.getDate() - range.days);
-        end = now;
-      } else if (range.today) {
-        start = end = now;
-      } else if (range.week) {
-        start = new Date();
-        start.setDate(now.getDate() - now.getDay());
-        end = now;
-      } else if (range.month) {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = now;
-      } else if (range.year) {
-        start = new Date(now.getFullYear(), 0, 1);
-        end = now;
-      } else if (range.months) {
-        start = new Date();
-        start.setMonth(now.getMonth() - range.months);
-        end = now;
-      }
-
-      const filtered = transactions.filter(
-        (transaction) => transaction.date >= start && transaction.date <= end
-      );
-
-      setDateRange({
-        start: start.toISOString().split("T")[0],
-        end: end.toISOString().split("T")[0],
-      });
-
-      setFilteredTransactions(filtered); // Update hasil filter
-    }
-
+    setDateRange({ start: range.start, end: range.end });
+    setIsCustomRange(false);
     setShowDateFilter(false);
+    filterAndSortRecords(sortType, selectedCategory, selectedAccount, range.start, range.end);
   };
+  
 
   const handleCustomRange = () => {
     if (dateRange.start && dateRange.end) {
-      if (!validateDateRange()) return; // NEW: Validasi tambahan sebelum filter
+      setSelectedRange("Custom");
       setIsCustomRange(true);
-      setSelectedRange("Custom Range");
       setShowDateFilter(false);
-      applyFilters();
+      filterAndSortRecords(sortType, selectedCategory, selectedAccount, dateRange.start, dateRange.end);
     }
   };
 
-  const handleAccountFilter = (account) => {
-    setSelectedAccount(account);
-    setFilteredTransactions((prevTransactions) =>
-      transactions.filter((transaction) =>
-        account === "All Accounts"
-          ? true
-          : transaction.accountFrom === account ||
-            transaction.accountTo === account
-      )
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSortType = e.target.value;
+    setSortType(newSortType);
+    filterAndSortRecords(
+      newSortType,
+      selectedCategory,
+      selectedAccount,
+      dateRange.start,
+      dateRange.end
     );
   };
-  // Calculate balance dynamically based on the selected filter
+  
+
+  const filterAndSortRecords = (
+    sort: string,
+    category: string,
+    account: string,
+    startDate?: string,
+    endDate?: string
+  ) => {
+    let filtered = [...allRecords];
+  
+    // Apply date filter
+    if (startDate && endDate) {
+      filtered = filtered.filter((record) => {
+        const recordDate = new Date(record.dateTime);
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        return recordDate >= start && recordDate < new Date(end.getTime() + 86400000);
+      });
+    }
+  
+    // Apply category filter
+    if (category !== "All Categories") {
+      filtered = filtered.filter((record) => record.category === category);
+    }
+  
+    // Apply account filter
+    if (account !== "All Accounts") {
+      filtered = filtered.filter(
+        (record) => record.accountId.name === account || record.toAccountId?.name === account
+      );
+    }
+  
+    // Apply sorting
+    switch (sort) {
+      case "TimeNewest":
+        filtered.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+        break;
+      case "TimeOldest":
+        filtered.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+        break;
+      case "AmountHighest":
+        filtered.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+        break;
+      case "AmountLowest":
+        filtered.sort((a, b) => Math.abs(a.amount) - Math.abs(b.amount));
+        break;
+    }
+  
+    setRecords(filtered);
+  };
+  
+  const resetForm = () => {
+    setNewRecord({ category: '', type: 'Expense', amount: 0, dateTime: '', accountId: accounts.length ? accounts[0]._id : null, toAccountId: '', note: '',  location: '' });
+    setSelectedRecord(null);
+    setIsEditMode(false);
+    setRecordType('Expense')
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    resetForm();
+  };
+
+  const openDeleteModal = (id: string) => {
+    setIsDeleteModalOpen(true);
+    setRecordToDelete(id);
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setNewRecord((prevRecord) => ({
+      ...prevRecord,
+      [name]: value,
+    }));
+  };
+  
+
+  const handleAddRecord = async () => {
+    if(!userId) return;
+  
+    try {
+      // Ensure required fields are set
+      const recordToSave = {
+        ...newRecord,
+        type: recordType, // Use the current recordType
+        accountId: newRecord.accountId || (accounts.length ? accounts[0]._id : null),
+        toAccountId: recordType === 'Transfer' ? newRecord.toAccountId : null,
+        category: recordType === 'Expense' ? newRecord.category : recordType,
+      };
+  
+      if (!recordToSave.accountId) {
+        console.error('No account selected');
+        return;
+      }
+  
+      if (isEditMode && selectedRecord) {
+        // Edit existing record
+        await apiRecord.updateRecord(selectedRecord._id, recordToSave);
+      } else {
+        // Add new record
+        await apiRecord.addRecord(recordToSave);
+      }
+  
+      fetchRecords();
+      handleCloseModal();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving record:', error);
+    }
+  };
+
+  const handleEditRecord = (record: Record) => {
+    setSelectedRecord(record);
+    setRecordType(record.type);
+    setNewRecord({
+      type: record.type,
+      amount: record.amount,
+      category: record.category,
+      note: record.note,
+      location: record.location,
+      accountId: record.accountId._id,
+      toAccountId: record.toAccountId?._id,
+      dateTime: record.dateTime
+    });
+    setIsEditMode(true);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteRecord = async () => {
+    if (recordToDelete) {
+      try {
+        await apiRecord.deleteRecord(recordToDelete);
+        setAccounts(accounts.filter((record) => record._id !== recordToDelete));
+        console.log(`Account with ID: ${recordToDelete} has been deleted.`);
+      } catch (error) {
+        console.error("Error deleting account:", error);
+      } finally {
+        fetchRecords();
+        setIsDeleteModalOpen(false);
+        resetForm();
+        setRecordToDelete(null);
+      }
+    }
+  };
+
   const calculateBalance = () => {
-    let balance = 0;
-
-    // Filter transactions based on the selected account
-    const filteredForAccount = filteredTransactions.filter((transaction) => {
-      if (selectedAccount === "All Accounts") {
-        return true; // Include all transactions if "All Accounts" is selected
-      }
-      if (
-        transaction.accountFrom === selectedAccount ||
-        transaction.accountTo === selectedAccount
-      ) {
-        return true; // Include transactions involving the selected account
-      }
-      return false;
-    });
-    // Sum up the amounts for the filtered transactions
-    filteredForAccount.forEach((transaction) => {
-      balance += transaction.amount;
-    });
-
-    return balance;
+    return records.reduce((sum, record) => sum + record.amount, 0);
   };
 
-  const handleCategoryFilter = (category) => {
-    setSelectedCategory(category);
-    setFilteredTransactions((prevTransactions) =>
-      transactions.filter((transaction) =>
-        category === "All Categories" ? true : transaction.category === category
-      )
-    );
-  };
+  function getCategoryEmoji(category: string): string {
+    const emojis: { [key: string]: string } = {
+      "Food & Beverages": "🍔",
+      "Shopping": "🛍",
+      "Housing": "🏠",
+      "Transport": "🚗",
+      "Entertainment": "🎮",
+      "Recreation": "🏞",
+      "Income": "💰",
+      "Transfer": "🔄"
+    };
+    return emojis[category] || "📂";
+  }
 
   if (loading) {
-    // NEW: Indikator loading
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div
-          className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-500"
-          role="status"
-        ></div>
-      </div>
-    );
+    return <Loading />;
   }
-
-  function getCategoryEmoji(category) {
-    switch (category) {
-      case "Food & Beverages":
-        return "🍔";
-      case "Shopping":
-        return "🛍️";
-      case "Housing":
-        return "🏠";
-      case "Transport":
-        return "🚗";
-      case "Entertainment":
-        return "🎮";
-      case "Recreation":
-        return "🏞️";
-      case "Income": // Emoji untuk Income
-        return "💰";
-      case "Transfer": // Emoji untuk Transfer
-        return "🔄";
-      default:
-        return "📂"; // Default emoji untuk kategori yang tidak dikenal
-    }
-  }
+  
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <aside className="w-1/4 bg-white shadow-md p-4">
-        <h2 className="text-lg font-bold mb-4">Records</h2>
-        <button
-          className="bg-green-500 text-white w-full py-2 px-4 rounded mb-4 hover:bg-green-600"
-          onClick={() => setShowAddRecordModal(true)} // Buka modal ketika tombol diklik
+<div className="container mx-auto p-4">
+  <div className="flex flex-col md:flex-row gap-4">
+    {/* Sidebar */}
+    <div className="bg-white p-4 rounded-lg shadow-md w-full md:w-1/4">
+      <h2 className="text-xl font-bold mb-4">Records</h2>
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="px-4 py-2 mb-4 rounded-lg bg-[#17CF97] text-white hover:bg-green-700 w-full"
+      >
+        + Add
+      </button>
+
+        {/* Accounts */}
+        <h3
+        className="font-bold mb-4 cursor-pointer flex items-center"
+        onClick={() => setIsAccountsDropdownVisible(!isAccountsDropdownVisible)}
+      >
+        {/* Dropdown Icon */}
+        <span className="mr-2">
+          {isAccountsDropdownVisible ? <FaChevronDown /> : <FaChevronRight />}
+        </span>
+        ACCOUNTS
+      </h3>
+      
+      {/* Dropdown */}
+      {isAccountsDropdownVisible && (
+      <div className="mb-4">
+  {["All Accounts", ...accounts.map(account => account.name)].map((accountName) => (
+    <div
+      key={accountName}
+      onClick={() => {
+        setSelectedAccount(accountName);
+        filterAndSortRecords(
+          sortType,
+          selectedCategory,
+          accountName,
+          dateRange.start,
+          dateRange.end
+        );
+      }}
+      className={`cursor-pointer py-1 ${
+        selectedAccount === accountName ? "text-blue-600 font-bold" : "text-gray-600"
+      }`}
+    >
+      {accountName}
+    </div>
+  ))}
+</div>
+)}
+
+      {/* Categories */}
+      <h3
+        className="font-bold mb-4 cursor-pointer flex items-center"
+        onClick={() => setIsCategoriesDropdownVisible(!isCategoriesDropdownVisible)}
+      >
+        {/* Dropdown Icon */}
+        <span className="mr-2">
+          {isCategoriesDropdownVisible ? <FaChevronDown /> : <FaChevronRight />}
+        </span>
+        CATEGORIES
+      </h3>
+        {/* Dropdown */}
+      {isCategoriesDropdownVisible && (
+      <div>
+        {["All Categories", ...categories].map((category) => (
+          <div
+          key={category}
+          onClick={() => {
+            setSelectedCategory(category);
+            filterAndSortRecords(
+              sortType,
+              category,
+              selectedAccount,
+              dateRange.start,
+              dateRange.end
+            );
+          }}
+          className={`cursor-pointer py-1 ${
+            selectedCategory === category ? "text-blue-600 font-bold" : "text-gray-600"
+          }`}
         >
-          + Add
-        </button>
-        <div className="mb-6">
-          <h3 className="font-bold mb-2">ACCOUNTS</h3>
-          <ul>
-            {accounts.map((account, index) => (
-              <li
-                key={index}
-                onClick={() => handleAccountFilter(account)}
-                className={`mb-2 text-gray-700 cursor-pointer hover:underline ${
-                  selectedAccount === account ? "font-bold text-blue-500" : ""
-                }`}
-              >
-                {account}
-              </li>
-            ))}
-          </ul>
+          {category}
         </div>
-        <div>
-          <h3 className="font-bold mb-2">CATEGORIES</h3>
-          <ul>
-            {categories.map((category, index) => (
-              <li
-                key={index}
-                onClick={() => handleCategoryFilter(category)}
-                className={`mb-2 text-gray-700 cursor-pointer hover:underline ${
-                  selectedCategory === category ? "font-bold text-blue-500" : ""
-                }`}
-              >
-                {category}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </aside>
+        ))}
+      </div>
+            )}
+    </div>
+    
 
-      {/* Add Record Modal */}
-      <AddRecordModal
-        isOpen={showAddRecordModal} // Properti untuk membuka modal
-        onClose={() => setShowAddRecordModal(false)} // Fungsi untuk menutup modal
-        onSave={(newRecord) => {
-          const formattedRecord = {
-            ...newRecord,
-            accountFrom: newRecord.accountFrom || null,
-            accountTo: newRecord.accountTo || "No Account Specified",
-            date: newRecord.date
-              ? new Date(newRecord.date).toISOString()
-              : new Date().toISOString(),
-          };
+    {/* Main Content */}
+    <div className="flex-1 bg-gray-100 p-4 rounded-lg shadow-md">
 
-          setTransactions((prevTransactions) => [
-            ...prevTransactions,
-            formattedRecord,
-          ]); // Update transactions langsung
-          setFilteredTransactions((prevFiltered) => [
-            ...prevFiltered,
-            formattedRecord,
-          ]); // Update filteredTransactions langsung
-          applyFilters();
-        }}
-        accounts={accounts} // Kirim daftar akun
-        categories={categories} // Kirim daftar kategori
-      />
+       {/* Balance, Sort by, and Date Filter Section */}
+<div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-4">
+  {/* Balance */}
+  <div>
+    <h3 className="text-lg font-bold mb-2">Balance</h3>
+    <p
+      className={`text-xl font-bold ${
+        calculateBalance() >= 0 ? "text-green-500" : "text-red-500"
+      }`}
+    >
+      IDR {Math.abs(calculateBalance()).toLocaleString("id-ID")}
+    </p>
+  </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-            <h3 className="text-lg font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Are you sure you want to delete this record?</p>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
+  {/* Date Filter and Sort by */}
+  <div className="flex items-center gap-4">
+    {/* Date Filter */}
+    <div className="relative">
+      <button
+        onClick={() => setShowDateFilter(!showDateFilter)}
+        className="h-10 px-4 border rounded bg-gray-200 hover:bg-gray-300 w-48 flex items-center justify-center overflow-hidden whitespace-nowrap"
+      >
+        <span className="truncate">
+          {getDisplayDate(selectedRange, isCustomRange, dateRange)}
+        </span>
+      </button>
+
+      {showDateFilter && (
+        <div className="absolute right-0 mt-2 bg-white shadow-lg p-4 rounded w-72 z-10">
+          <h3 className="font-bold mb-2">Range</h3>
+          {predefinedRanges.map((range, index) => (
+            <div key={index} className="mb-2">
+              <label className="cursor-pointer flex items-center">
+                <input
+                  type="radio"
+                  name="dateRange"
+                  checked={selectedRange === range.label}
+                  className="mr-2"
+                  onChange={() => handlePredefinedRange(range)}
+                />
+                <span className="truncate">{range.label}</span>
+              </label>
             </div>
+          ))}
+          <div className="mt-4">
+            <h3 className="font-bold mb-2">Custom Range</h3>
+            <div className="flex flex-col space-y-2">
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) =>
+                  setDateRange((prev) => ({
+                    ...prev,
+                    start: e.target.value,
+                  }))
+                }
+                className="p-2 border rounded"
+              />
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) =>
+                  setDateRange((prev) => ({
+                    ...prev,
+                    end: e.target.value,
+                  }))
+                }
+                className="p-2 border rounded"
+              />
+            </div>
+            <button
+              onClick={handleCustomRange}
+              className="bg-blue-500 text-white py-2 px-4 rounded mt-4 hover:bg-blue-600 w-full"
+            >
+              Apply
+            </button>
           </div>
         </div>
       )}
+    </div>
 
-      <main className="flex-grow flex flex-col">
-        <div className="p-6 shadow-md bg-white">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-lg font-bold">Records</h1>
-            <div className="flex items-center space-x-8">
-            <div>
-            <p className="font-bold text-lg">
-              Balance: IDR {Math.abs(calculateBalance()).toLocaleString()}
-            </p>
-            <p className={`text-${calculateBalance() < 0 ? "red" : "green"}-500`}>
-              {calculateBalance() < 0 ? "-IDR" : "+IDR"} {Math.abs(calculateBalance()).toLocaleString()}
-            </p>
-          </div>
-              <div className="relative">
-                <button
-                  onClick={() => setShowDateFilter(!showDateFilter)}
-                  className="h-10 px-4 border rounded bg-gray-200 hover:bg-gray-300 w-48 flex items-center justify-center overflow-hidden whitespace-nowrap"
-                >
-                  <span className="truncate">
-                    {getDisplayDate(selectedRange, isCustomRange, dateRange)}
-                  </span>
-                </button>
+    {/* Sort by */}
+    <div>
+      <select
+        value={sortType}
+        onChange={handleSortChange}
+        className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+      >
+        <option value="TimeNewest">Time (Newest)</option>
+        <option value="TimeOldest">Time (Oldest)</option>
+        <option value="AmountHighest">Amount (Highest)</option>
+        <option value="AmountLowest">Amount (Lowest)</option>
+      </select>
+    </div>
+  </div>
+</div>
 
-                {showDateFilter && (
-                  <div className="absolute right-0 mt-2 bg-white shadow-lg p-4 rounded w-72 z-10">
-                    <h3 className="font-bold mb-2">Range</h3>
-                    {predefinedRanges.map((range, index) => (
-                      <div key={index} className="mb-2">
-                        <label className="cursor-pointer flex items-center">
-                          <input
-                            type="radio"
-                            name="dateRange"
-                            checked={selectedRange === range.label}
-                            className="mr-2"
-                            onChange={() => handlePredefinedRange(range)}
-                          />
-                          <span className="truncate">{range.label}</span>
-                        </label>
-                      </div>
-                    ))}
-                    <div className="mt-4">
-                      <h3 className="font-bold mb-2">Custom Range</h3>
-                      <div className="flex flex-col space-y-2">
-                        <input
-                          type="date"
-                          value={dateRange.start}
-                          onChange={(e) =>
-                            setDateRange((prev) => ({
-                              ...prev,
-                              start: e.target.value,
-                            }))
-                          }
-                          className="p-2 border rounded"
-                        />
-                        <input
-                          type="date"
-                          value={dateRange.end}
-                          onChange={(e) =>
-                            setDateRange((prev) => ({
-                              ...prev,
-                              end: e.target.value,
-                            }))
-                          }
-                          className="p-2 border rounded"
-                        />
-                      </div>
-                      <button
-                        onClick={handleCustomRange}
-                        className="bg-blue-500 text-white py-2 px-4 rounded mt-4 hover:bg-blue-600 w-full"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  </div>
-                )}
+
+      {/* Records List */}
+      {records.map((record) => (
+        <div
+          key={record._id}
+          className="flex justify-between items-center bg-white p-4 mb-4 rounded-lg shadow-sm"
+        >
+          <div className="flex w-full items-center">
+            {/* Category & Date */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span>{getCategoryEmoji(record.category)}</span>
+                <h3 className="font-bold">{record.category}</h3>
               </div>
+              <p className="text-sm text-gray-500">
+                    {new Date(record.dateTime).toLocaleString("id-ID", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false, // Optional: Use 24-hour time format
+                    })}
+                  </p>
+            </div>
 
-              <select
-                value={sortOption}
-                onChange={(e) => handleSortChange(e.target.value)} // Ganti pemanggilan fungsi
-                className="h-10 px-4 border rounded"
+            {/* Account Info */}
+                <div className="flex-1 text-center">
+                {record.type === "Transfer" ? (
+                    <p className="text-md font-semibold text-blue-600">
+                    {record.accountId.name} → {record.toAccountId?.name}
+                    </p>
+                ) : record.type === "Income" ? (
+                    <p className="text-md font-semibold text-blue-600">
+                    {record.accountId.name}
+                    </p>
+                ) : record.type === "Expense" ? (
+                    <p className="text-md font-semibold text-blue-600">
+                    {record.accountId.name} 
+                    </p>
+                ) : null}
+                </div>
+
+            {/* Notes */}
+            <div className="flex-1 text-center">
+              <p className="text-sm text-gray-600">{record.note}</p>
+            </div>
+
+            {/* Notes */}
+            <div className="flex-1 text-center">
+              <p className="text-md text-black">{record.location}</p>
+            </div>
+
+            {/* Amount */}
+            <div className="flex-1 text-right">
+              <p className={`font-bold ${record.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
+                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount).toLocaleString("id-ID")}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 ml-4">
+              <button
+                onClick={() => handleEditRecord(record)}
+                className="p-2 text-gray-600 hover:text-blue-600"
               >
-                <option>Time (newest first)</option>
-                <option>Time (oldest first)</option>
-                <option>Amount (lowest first)</option>
-                <option>Amount (highest first)</option>
-              </select>
+                <Pencil size={20} />
+              </button>
+              <button
+                onClick={() => openDeleteModal(record._id)}
+                className="p-2 text-gray-600 hover:text-red-600"
+              >
+                <Trash2 size={20} />
+              </button>
             </div>
           </div>
         </div>
-
-        <div className="flex-grow p-6 overflow-y-auto">
-          {filteredTransactions.length > 0 ? (
-            filteredTransactions
-              .flatMap((transaction) => {
-                if (transaction.type === "transfer") {
-                  return [
-                    /* Pengirim */
-                    {
-                      id: `${transaction.id}-from`,
-                      type: "transfer",
-                      direction: "out", // Arah keluar
-                      account: transaction.accountFrom,
-                      amount: -transaction.amount,
-                      category: "Transfer",
-                      date: transaction.date,
-                    },
-                    /* Penerima */
-                    {
-                      id: `${transaction.id}-to`,
-                      type: "transfer",
-                      direction: "in", // Arah masuk
-                      account: transaction.accountTo,
-                      amount: transaction.amount,
-                      category: "Transfer",
-                      date: transaction.date,
-                    },
-                  ];
-                }
-                return [transaction];
-              })
-              .map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="grid grid-cols-5 gap-4 bg-white p-4 mb-4 rounded shadow items-center"
-                >
-                  {/* Kolom 1: Kategori dan Tanggal */}
-                  <div className="flex flex-col">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                        <span className="text-red-500 text-lg">
-                          {getCategoryEmoji(transaction.category)}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-gray-700">
-                        {transaction.category}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {transaction.date
-                        ? new Intl.DateTimeFormat("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: false,
-                          }).format(new Date(transaction.date))
-                        : "No Date Available"}
-                    </p>
-                  </div>
-
-                  {/* Kolom 2: Notes */}
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      {transaction.notes || ""}
-                    </p>
-                  </div>
-
-                  {/* Kolom 3: Account */}
-                  <div className="text-right">
-                    {transaction.type === "transfer" ? (
-                      <p className="text-sm font-bold text-gray-700">
-                        {transaction.accountFrom && transaction.accountTo
-                          ? `${transaction.accountFrom} → ${transaction.accountTo}`
-                          : "No Account From → No Account To"}
-                      </p>
-                    ) : transaction.type === "income" ? (
-                      <p className="text-sm font-bold text-gray-700">
-                        To Account: {transaction.accountTo || "No Account To"}
-                      </p>
-                    ) : (
-                      <p className="text-sm font-bold text-gray-700">
-                        From Account:{" "}
-                        {transaction.accountFrom || "No Account From"}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Kolom 4: Amount */}
-                  <div className="text-right">
-                    <p
-                      className={`text-lg font-bold ${
-                        transaction.amount < 0
-                          ? "text-red-500"
-                          : "text-green-500"
-                      }`}
-                    >
-                      {transaction.amount < 0 ? "-IDR " : "+IDR "}
-                      {Math.abs(transaction.amount).toLocaleString()}
-                    </p>
-                  </div>
-
-                  {/* Kolom 5: Actions */}
-                  <div className="flex justify-end space-x-2">
-                    <button
-                      onClick={() => handleEditRecord(transaction)}
-                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteRecord(transaction)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-          ) : (
-            <p className="text-gray-500 text-center">No transactions found.</p>
-          )}
-        </div>
-      </main>
+      ))}
     </div>
+  </div>
+
+  {/* Delete Confirmation Modal */}
+  {isDeleteModalOpen && (
+    <div className="fixed inset-0 flex items-center justify-center bg-slate-200 bg-opacity-50 z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h2 className="text-xl font-bold mb-4">Delete Record</h2>
+        <p>Are you sure you want to delete this record? This action cannot be undone.</p>
+        <div className="mt-6 flex justify-end gap-4">
+          <button
+            onClick={() => setIsDeleteModalOpen(false)}
+            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDeleteRecord}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+{/* Add/Edit Record Modal */}
+{isModalOpen && (
+  <div className="fixed inset-0 flex items-center justify-center bg-slate-200 bg-opacity-50 z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-[40rem]">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">{isEditMode ? 'Edit Record' : 'Add New Record'}</h2>
+        <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-800">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Tabs for Record Type */}
+      <div className="flex justify-between mb-4">
+        {['Expense', 'Income', 'Transfer'].map((type) => (
+          <button
+            key={type}
+            onClick={() => setRecordType(type)}
+            className={`px-4 py-2 rounded-lg ${
+              recordType === type ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
+            }`}
+          >
+            {type}
+          </button>
+        ))}
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAddRecord();
+        }}
+      >
+        {/* Two-Column Layout */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-gray-700">Account</label>
+            <select
+              name="accountId"
+              value={newRecord.accountId || ''}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+              required
+            >
+              {accounts.map((account) => (
+                <option key={account._id} value={account._id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {recordType === 'Expense' && (
+            <div>
+              <label className="block text-gray-700">Category</label>
+              <select
+                name="category"
+                value={newRecord.category}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+                required
+              >
+                {['Food & Beverages', 'Shopping', 'Housing', 'Transport', 'Entertainment', 'Recreation'].map(
+                  (category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+          )}
+
+          {recordType === 'Transfer' && (
+            <div>
+              <label className="block text-gray-700">To Account</label>
+              <select
+                name="toAccountId"
+                value={newRecord.toAccountId}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+                required
+              >
+                {accounts.map((account) => (
+                  <option key={account._id} value={account._id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-gray-700">Amount</label>
+            <input
+              type="number"
+              name="amount"
+              value={newRecord.amount}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700">Date & Time</label>
+            <input
+              type="datetime-local"
+              name="dateTime"
+              value={newRecord.dateTime}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+              required
+            />
+          </div>
+
+          {/* Location Field */}
+          <div className="col-span-2">
+            <label className="block text-gray-700">Location</label>
+            <input
+              type="text"
+              name="location"
+              value={newRecord.location}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+              placeholder="Enter the location"
+            />
+          </div>
+
+          <div className="col-span-2">
+            <label className="block text-gray-700">Note</label>
+            <textarea
+              name="note"
+              value={newRecord.note}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-blue-600"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-[#17CF97] text-white px-4 py-2 rounded-lg hover:bg-green-700"
+        >
+          {isEditMode ? 'Save Changes' : 'Add Record'}
+        </button>
+      </form>
+    </div>
+  </div>
+)}
+
+
+  {/* Auto Logout Modal */}
+  {showModal && <AutoLogoutModal countdown={countdown} onStaySignedIn={resetTimer} />}
+</div>
   );
 }

@@ -36,8 +36,7 @@ async function addAccount(req, res) {
 // Fungsi untuk menambah record baru
 async function addRecord(req, res) {
   try {
-    const { accountId } = req.params;
-    const { type, amount, category, note, dateTime, location } = req.body;
+    const { accountId, type, amount, category, note, dateTime, location } = req.body;
 
     const account = await Account.findById(accountId);
     if (!account) return res.status(404).json({ message: 'Account not found' });
