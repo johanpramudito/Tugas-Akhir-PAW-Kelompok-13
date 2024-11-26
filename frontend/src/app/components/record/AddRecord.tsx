@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 interface AddRecordProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (record: any) => void; // Adjust `any` to the specific type of record if known
+  onSave: (record: { type: string; accountFrom: string | null; accountTo: string | null; amount: number; category: string; date: string; notes: string } | { type: string; accountFrom: string | null; accountTo: string | null; amount: number; category: string; date: string; notes: string }[]) => void;
   accounts: string[];
   categories: string[];
   editRecord?: {

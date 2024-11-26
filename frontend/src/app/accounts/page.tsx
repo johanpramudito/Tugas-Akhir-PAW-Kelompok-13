@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import useAutoLogout from "../../../hook/useAutoLogout";
 import { useState, useEffect } from "react";
 import Loading from "../components/Loading";
 import AutoLogoutModal from "../components/AutoLogoutModal";
-import apiAccount from "@utils/apiAccount";
+import api from "@utils/apiAccount";
 import { FiEdit, FiTrash } from 'react-icons/fi'; 
 import { useUserContext } from "@/context/UserContext";
 
@@ -72,18 +73,11 @@ export default function Account() {
     if (!userId) return;
   
     try {
-      const response = await apiAccount.getAccounts(userId);
+      const response = await api.getAccounts(userId);
       setAccounts(response.data);
       setAllAccounts(response.data); // Store the fetched accounts for searching
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        // Handle case where no accounts are found
-        console.warn('No accounts found for this user.');
-        setAccounts([]); // Set empty accounts array
-        setAllAccounts([]); // Clear allAccounts array
-      } else {
-        console.error('Error fetching accounts:', error);
-      }
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
     }
   };
 
@@ -145,10 +139,10 @@ const filterAndSortAccounts = (search: string, sort: string) => {
     try {
       if (isEditMode && selectedAccount) {
         // Edit existing account
-        await apiAccount.updateAccount(selectedAccount._id, newAccount);
+        await api.updateAccount(selectedAccount._id, newAccount);
       } else {
         // Add new account
-        await apiAccount.addAccount(userId, newAccount);
+        await api.addAccount(userId, newAccount);
       }
 
       fetchAccounts();
@@ -176,15 +170,13 @@ const filterAndSortAccounts = (search: string, sort: string) => {
   const handleDeleteAccount = async () => {
     if (accountToDelete) {
       try {
-        await apiAccount.deleteAccount(accountToDelete);
+        await api.deleteAccount(accountToDelete);
         setAccounts(accounts.filter((account) => account._id !== accountToDelete));
         console.log(`Account with ID: ${accountToDelete} has been deleted.`);
       } catch (error) {
         console.error("Error deleting account:", error);
       } finally {
-        fetchAccounts();
         setIsDeleteModalOpen(false);
-        resetForm();
         setAccountToDelete(null);
       }
     }
@@ -231,7 +223,7 @@ const filterAndSortAccounts = (search: string, sort: string) => {
           <h2 className="text-xl font-bold mb-4">Accounts</h2>
           <button
             onClick={handleOpenModal}
-            className="px-4 py-2 mb-4 rounded-lg bg-[#17CF97] text-white hover:bg-green-700 w-full"
+            className="px-4 py-2 mb-4 rounded-lg bg-[#17CF97] text-white hover:bg-green-700"
           >
             + Add
           </button>
@@ -364,7 +356,7 @@ const filterAndSortAccounts = (search: string, sort: string) => {
               </div>
               <button
                 type="submit"
-                className="w-full bg-[#17CF97] text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
                 {isEditMode ? 'Save Changes' : 'Add Account'}
               </button>

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,8 +42,6 @@ type Account = {
     initialAmount: number;
     balance: number;
   };
-
-const accounts = ["Cash", "Debit Card", "Credit Card"];
 
 export default function RecordsDashboard() {
   const { showModal, countdown, resetTimer } = useAutoLogout(10 * 60 * 1000); // 10 minutes
@@ -128,8 +128,8 @@ export default function RecordsDashboard() {
       const response = await apiAccount.getAccounts(userId);
       setAccounts(response.data);
       setAllAccounts(response.data); // Store the fetched accounts for searching
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      if ((error as any).response?.status === 404) {
         // Handle case where no accounts are found
         console.warn('No accounts found for this user.');
         setAccounts([]); // Set empty accounts array
@@ -289,16 +289,17 @@ export default function RecordsDashboard() {
       const recordToSave = {
         ...newRecord,
         type: recordType, // Use the current recordType
-        accountId: newRecord.accountId || (accounts.length ? accounts[0]._id : null),
-        toAccountId: recordType === 'Transfer' ? newRecord.toAccountId : null,
+        accountId: newRecord.accountId || (accounts.length ? accounts[0]._id : ''),
+        toAccountId: recordType === 'Transfer' ? newRecord.toAccountId || '' : '',
         category: recordType === 'Expense' ? newRecord.category : recordType,
+        amount: parseFloat(newRecord.amount.toString())
       };
-  
+    
       if (!recordToSave.accountId) {
         console.error('No account selected');
         return;
       }
-  
+    
       if (isEditMode && selectedRecord) {
         // Edit existing record
         await apiRecord.updateRecord(selectedRecord._id, recordToSave);
@@ -306,7 +307,7 @@ export default function RecordsDashboard() {
         // Add new record
         await apiRecord.addRecord(recordToSave);
       }
-  
+    
       fetchRecords();
       handleCloseModal();
       resetForm();
@@ -618,7 +619,7 @@ export default function RecordsDashboard() {
             {/* Amount */}
             <div className="flex-1 text-right">
               <p className={`font-bold ${record.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
-                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount).toLocaleString("id-ID")}
+                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount)}
               </p>
             </div>
 
