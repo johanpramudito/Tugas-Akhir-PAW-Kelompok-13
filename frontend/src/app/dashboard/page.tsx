@@ -11,7 +11,7 @@ import { FiEdit, FiTrash } from "react-icons/fi";
 import { AiOutlineSelect } from "react-icons/ai";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2"; // Import Doughnut
-export const revalidate = '60'
+export const revalidate = 60;
 
 
 type Account = {
