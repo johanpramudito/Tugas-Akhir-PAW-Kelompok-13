@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://backend-tugas-akhir-paw-kelompok-13.vercel.app/api/records';
+const API_URL = process.env.RECORD_API_URL || '';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
