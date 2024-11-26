@@ -364,18 +364,39 @@ export default function RecordsDashboard() {
   
 
   const handleEditRecord = (record: Record) => {
+    // Determine the original type of the record
+    const originalType = record.type.includes('Transfer') ? 'Transfer' : record.type;
+    
     setSelectedRecord(record);
-    setRecordType(record.type);
-    setNewRecord({
-      type: record.type,
-      amount: record.amount,
-      category: record.category,
+    setRecordType(originalType);
+  
+    // Improved datetime handling
+    const formattedDateTime = record.dateTime 
+      ? new Date(record.dateTime).toISOString().slice(0, 16) 
+      : '';
+  
+    const editRecord: typeof newRecord = {
+      type: originalType,
+      amount: Math.abs(record.amount), // Use absolute value
+      category: originalType === 'Expense' ? record.category : originalType,
       note: record.note,
       location: record.location,
-      accountId: record.accountId._id,
-      toAccountId: record.toAccountId?._id || '', // Pastikan ada nilai default untuk transfer
-      dateTime: record.dateTime,
-    });
+      // For transfers, use the source account (the one with negative amount)
+      accountId: record.type === 'Transfer (Outgoing)' 
+        ? record.accountId._id 
+        : record.type === 'Transfer (Incoming)'
+        ? record.toAccountId._id
+        : record.accountId._id,
+      // For transfers, use the destination account
+      toAccountId: record.type === 'Transfer (Outgoing)' 
+        ? record.toAccountId._id 
+        : record.type === 'Transfer (Incoming)'
+        ? record.accountId._id
+        : '', 
+      dateTime: formattedDateTime,
+    };
+  
+    setNewRecord(editRecord);
     setIsEditMode(true);
     setIsModalOpen(true);
   };
@@ -620,7 +641,7 @@ export default function RecordsDashboard() {
         >
           <div className="flex w-full items-center">
             {/* Category & Date */}
-            <div className="flex-1">
+            <div className="min-w-[200px] flex-1">
               <div className="flex items-center gap-2">
                 <span>{getCategoryEmoji(record.category)}</span>
                 <h3 className="font-bold">{record.category}</h3>
