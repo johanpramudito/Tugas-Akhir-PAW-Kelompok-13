@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Loading from "../components/Loading";
 import Container from "../components/Container";
 import AutoLogoutModal from "../components/AutoLogoutModal";
-import api from "@utils/apiAccount";
+import apiAccount from "@utils/apiAccount";
 import apiRecord from "@utils/apiRecord";
 import { useUserContext } from "@/context/UserContext";
 import { FiEdit, FiTrash } from "react-icons/fi";
@@ -58,63 +58,6 @@ export default function Dashboard() {
   const [latestRecords, setLatestRecords] = useState<Record[]>([]);
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
-  const [dateRange, setDateRange] = useState<string>("today");
-
-  // Dapatkan tanggal hari ini dalam format yang cocok untuk perbandingan
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Set ke awal hari (00:00:00)
-
-  const getDateRange = (range: string): { start: Date; end: Date } => {
-    const now = new Date();
-    const start = new Date();
-    const end = new Date();
-
-    switch (range) {
-      case "today":
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "this-week":
-        const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        start.setDate(now.getDate() - day);
-        start.setHours(0, 0, 0, 0);
-        end.setDate(start.getDate() + 6);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "this-month":
-        start.setDate(1);
-        start.setHours(0, 0, 0, 0);
-        end.setMonth(start.getMonth() + 1);
-        end.setDate(0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "this-year":
-        start.setMonth(0, 1);
-        start.setHours(0, 0, 0, 0);
-        end.setMonth(11, 31);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "7-days":
-        start.setDate(now.getDate() - 7);
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "30-days":
-        start.setDate(now.getDate() - 30);
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "90-days":
-        start.setDate(now.getDate() - 90);
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      default:
-        break;
-    }
-
-    return { start, end };
-  };
 
   const categoryColors = {
     "Food & Beverages": "#FF6384",
@@ -155,7 +98,7 @@ export default function Dashboard() {
   const fetchAccounts = async () => {
     if (!userId) return;
     try {
-      const response = await api.getAccounts(userId);
+      const response = await apiAccount.getAccounts(userId);
       setAccounts(response.data);
       console.log(response.data);
     } catch (error) {
@@ -166,91 +109,83 @@ export default function Dashboard() {
   const fetchRecords = async (accountId?: string) => {
     try {
       if (!userId) return;
-
-      // Fetch accounts based on userId
-      const AccountResponse = await api.getAccounts(userId);
+  
+      // Ambil data akun berdasarkan userId
+      const AccountResponse = await apiAccount.getAccounts(userId);
       const accounts = AccountResponse.data;
-
-      // Calculate initialAmount from the selected account (if any)
+  
+      // Hitung initialAmount dari akun yang dipilih (jika ada)
       let initialAmountFromAccounts = 0;
-
+  
       if (accountId) {
-        // If an account is selected, only calculate initialAmount from that account
-        const selectedAccount = accounts.find(
-          (account: Account) => account._id === accountId
-        );
+        // Jika ada akun yang dipilih, hanya hitung initialAmount dari akun tersebut
+        const selectedAccount = accounts.find((account: Account) => account._id === accountId);
         if (selectedAccount) {
           initialAmountFromAccounts = selectedAccount.initialAmount || 0;
         }
       } else {
-        // If no account is selected, sum initialAmount from all Cash and Bank accounts
+        // Jika tidak ada akun yang dipilih, jumlahkan initialAmount dari semua akun Cash dan Bank
         initialAmountFromAccounts = accounts
           .filter(
             (account: Account) =>
               account.type === "Cash" || account.type === "Bank"
           )
           .reduce(
-            (acc: number, account: Account) =>
-              acc + (account.initialAmount || 0),
+            (acc: number, account: Account) => acc + (account.initialAmount || 0),
             0
           );
       }
-
-      const { start, end } = getDateRange(dateRange); // Get the date range
+  
       let records: Record[] = [];
-
-      // Fetch records based on the selected account (if any)
+  
+      // Ambil data records berdasarkan akun yang dipilih (jika ada)
       if (accountId) {
-        const response = await apiRecord.getRecordByAccount(accountId); // Fetch records by accountId
+        const response = await apiRecord.getRecordByAccount(accountId); // Ambil records berdasarkan accountId
         records = response.data;
       } else {
-        // Fetch all records (Expense and Income) based on userId
+        // Ambil semua data records (Expense dan Income) berdasarkan userId
         const response = await apiRecord.getRecordByUser(userId);
         records = response.data;
       }
-
-      // Filter records based on the selected date range
-      const filteredRecords = records.filter((record: Record) => {
-        const recordDate = new Date(record.dateTime);
-        return recordDate >= start && recordDate <= end;
-      });
-
-      // Filter records by type
-      const expenseRecords = filteredRecords.filter(
+  
+      // Filter untuk hanya mengambil records bertipe "Expense"
+      const expenseRecords = records.filter(
         (record: Record) => record.type === "Expense"
       );
-      const incomeRecords = filteredRecords.filter(
-        (record: Record) => record.type === "Income"
-      );
-
-      // Calculate total expense
+  
+      // Hitung total expense
       const totalExpense = expenseRecords.reduce(
-        (sum, record) => sum + (record.amount || 0), // Ensure amount is not undefined
+        (sum: number, record: Record) => sum + (record.amount || 0), // Pastikan amount ada
         0
       );
-
-      // Calculate total income
-      const totalIncome =
-        initialAmountFromAccounts + // Add initialAmount when calculating income
-        incomeRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
-
-      // Update state with the calculated values
-      setExpense(totalExpense);
-      setIncome(totalIncome);
-
-      // Set total expense to state
+  
+      // Set total expense ke state
       setTotalExpense(totalExpense);
-
-      // Set chart data: group by category and total expense per category
+  
+      // Hitung total income, termasuk initialAmount dari akun yang dipilih atau semua akun "Cash" dan "Bank"
+      const incomeRecords = records.filter(
+        (record: Record) => record.type === "Income"
+      );
+  
+      const totalIncome = incomeRecords.reduce(
+        (acc: number, record: Record) => acc + (record.amount || 0), // Pastikan amount ada
+        initialAmountFromAccounts // Tambahkan initialAmount sesuai kondisi
+      );
+  
+      // Set nilai total Income dan Expense ke state
+      setIncome(totalIncome);
+      setExpense(totalExpense);
+  
+      // Kategori chart: group by category dan total expense per kategori
       const categories: { [key: string]: number } = {};
       expenseRecords.forEach((record: Record) => {
         categories[record.category] =
           (categories[record.category] || 0) + (record.amount || 0);
       });
-
+  
       const labels = Object.keys(categories);
       const data = Object.values(categories);
-
+  
       // Set chart data
       setChartData({
         labels,
@@ -260,27 +195,27 @@ export default function Dashboard() {
             data,
             backgroundColor: labels.map(
               (label) =>
-                categoryColors[label as keyof typeof categoryColors] ||
-                "#FF0000" // Default color if no match
+                categoryColors[label as keyof typeof categoryColors] || "#FF0000", // Default warna jika tidak ada match
             ),
             hoverOffset: 4,
           },
         ],
       });
-
-      // Sort records by dateTime in descending order
-      const sortedRecords = filteredRecords.sort(
+  
+      // Urutkan data berdasarkan dateTime secara menurun
+      const sortedRecords = records.sort(
         (a: Record, b: Record) =>
           new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
       );
-
-      // Get the latest 5 records
+  
+      // Ambil 5 record terbaru
       const latestRecords = sortedRecords.slice(0, 5);
-      setLatestRecords(latestRecords); // Save data for rendering
+      setLatestRecords(latestRecords); // Simpan data untuk dirender
     } catch (error) {
       console.error("Error fetching records:", error);
     }
   };
+  
 
   useEffect(() => {
     // Set loading to false after the component mounts
@@ -304,10 +239,10 @@ export default function Dashboard() {
     try {
       if (selectedAccount) {
         // Edit existing account
-        await api.updateAccount(selectedAccount._id, newAccount);
+        await apiAccount.updateAccount(selectedAccount._id, newAccount);
       } else {
         // Add new account
-        await api.addAccount(userId, newAccount);
+        await apiAccount.addAccount(userId, newAccount);
       }
 
       fetchAccounts();
@@ -336,7 +271,7 @@ export default function Dashboard() {
   const handleDeleteAccount = async () => {
     if (accountToDelete) {
       try {
-        await api.deleteAccount(accountToDelete);
+        await apiAccount.deleteAccount(accountToDelete);
         setAccounts(
           accounts.filter((account) => account._id !== accountToDelete)
         );
@@ -461,23 +396,6 @@ export default function Dashboard() {
               </div>
             </button>
           </div>
-          <div className="date-range-selector flex items-center justify-center">
-            <select
-              value={dateRange}
-              onChange={(e) => {
-                setDateRange(e.target.value);
-                fetchRecords(selectedAccount?._id); // Refetch records on change
-              }}
-            >
-              <option value="today">Today</option>
-              <option value="this-week">This Week</option>
-              <option value="this-month">This Month</option>
-              <option value="this-year">This Year</option>
-              <option value="7-days">Last 7 Days</option>
-              <option value="30-days">Last 30 Days</option>
-              <option value="90-days">Last 90 Days</option>
-            </select>
-          </div>
         </div>
         <div className="flex lg:flex-row flex-col gap-4 auto-rows-fr justify-center ">
           <div className="p-5 rounded-lg bg-gray-200 w-full lg:w-[500px]">
@@ -572,11 +490,11 @@ export default function Dashboard() {
               Cash Flow
             </h2>
             <div className="w-full h-[1px] bg-black"></div>
-            <h3 className="font-GeistVF font-medium text-lg text-gray-500">
-              This Month
-            </h3>
             <h3 className="font-GeistMonoVF text-black text-2xl">
-              Rp{income - expense > 0 ? income - expense : 0}
+              {selectedAccount ? (  
+                `Rp${selectedAccount.balance.toLocaleString("id-ID")}`
+                ): ( `Rp${income - expense > 0 ? income - expense : 0}` )
+              }
             </h3>{" "}
             {/* Menampilkan saldo bulan ini */}
             {/* Income */}
