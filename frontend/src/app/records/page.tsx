@@ -12,7 +12,6 @@ import apiAccount from "@utils/apiAccount";
 import apiRecord from "@utils/apiRecord";
 import { FaChevronDown, FaChevronRight } from "react-icons/fa"; // Import icons from react-icons
 export const dynamic = "force-dynamic";
-export const revalidate = 60;
 
 
 type Record = {

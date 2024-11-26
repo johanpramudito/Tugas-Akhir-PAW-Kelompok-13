@@ -9,7 +9,6 @@ import apiAccount from "@utils/apiAccount";
 import { FiEdit, FiTrash } from 'react-icons/fi'; 
 import { useUserContext } from "@/context/UserContext";
 export const dynamic = "force-dynamic";
-export const revalidate = 60;
 
 
 type Account = {
