@@ -245,7 +245,8 @@ const getRecordsByUser = async (req, res) => {
 
     const records = await Record.find({
       accountId: { $in: accounts.map(account => account._id) }
-    });
+    }).populate('accountId') // Populate the accountId field in the Record
+    .populate('toAccountId');
     res.status(200).json(records);
   } catch (error) {
     console.error(`Error in getRecordsByUser for userId: ${userId} - ${error.message}`);
