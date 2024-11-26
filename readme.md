@@ -19,11 +19,11 @@ Tugas ini dibuat untuk memenuhi syarat penilaian tugas akhir mata kuliah Pengemb
 
 Jangan lupa untuk download .env di grup
 
-### link video
 
+[### Link Video](https://drive.google.com/drive/folders/1M-Pzfcq6z1j5RMEuXE1XRx-v0ivias8J)
 
-### link slide atau ppt
-https://www.canva.com/design/DAGXenuBzi8/Dum-mDt2pR-81STz3JkkZg/edit
+[### Link Slide/PPT](https://www.canva.com/design/DAGXkRYLa1Y/-4FL1oX_TTRdBf2lNdn31g/edit)
 
+[### Link Web App Frontend](https://frontend-tugas-akhir-paw-kelompok-13.vercel.app/)
 
-### link web app
+[### Link Web App Backend](https://backend-tugas-akhir-paw-kelompok-13.vercel.app/)
