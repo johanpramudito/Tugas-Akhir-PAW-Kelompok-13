@@ -266,7 +266,7 @@ export default function RecordsDashboard() {
     // Apply account filter
     if (account !== "All Accounts") {
       filtered = filtered.filter((record) => 
-        record.accountId.name === account
+        record.accountId?.name === account
       );
     }
   
@@ -279,10 +279,10 @@ export default function RecordsDashboard() {
         filtered.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
         break;
       case "AmountHighest":
-        filtered.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+        filtered.sort((a, b) => b.amount - a.amount);
         break;
       case "AmountLowest":
-        filtered.sort((a, b) => Math.abs(a.amount) - Math.abs(b.amount));
+        filtered.sort((a, b) => a.amount - b.amount);
         break;
     }
   
@@ -401,6 +401,13 @@ export default function RecordsDashboard() {
     setIsModalOpen(true);
   };
   
+    // Reset category when record type changes
+  useEffect(() => {
+    setNewRecord(prevRecord => ({
+      ...prevRecord,
+      category: recordType === 'Expense' ? prevRecord.category : ''
+    }));
+  }, [recordType]);
 
   const handleDeleteRecord = async () => {
     if (recordToDelete) {
@@ -545,7 +552,7 @@ export default function RecordsDashboard() {
         calculateBalance() >= 0 ? "text-green-500" : "text-red-500"
       }`}
     >
-      IDR {Math.abs(calculateBalance()).toLocaleString("id-ID")}
+      {calculateBalance() >= 0 ? "" : "-"}IDR {Math.abs(calculateBalance()).toLocaleString("id-ID")}
     </p>
   </div>
 
@@ -692,7 +699,7 @@ export default function RecordsDashboard() {
             {/* Amount */}
             <div className="flex-1 text-right">
               <p className={`font-bold ${record.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
-                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount)}
+                {record.amount >= 0 ? "+" : "-"}IDR {Math.abs(record.amount).toLocaleString('id-ID')}
               </p>
             </div>
 
