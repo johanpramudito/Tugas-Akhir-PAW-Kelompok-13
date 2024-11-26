@@ -5,7 +5,7 @@ import useAutoLogout from "../../../hook/useAutoLogout";
 import { useState, useEffect } from "react";
 import Loading from "../components/Loading";
 import AutoLogoutModal from "../components/AutoLogoutModal";
-import api from "@utils/apiAccount";
+import apiAccount from "@utils/apiAccount";
 import { FiEdit, FiTrash } from 'react-icons/fi'; 
 import { useUserContext } from "@/context/UserContext";
 
@@ -73,7 +73,7 @@ export default function Account() {
     if (!userId) return;
   
     try {
-      const response = await api.getAccounts(userId);
+      const response = await apiAccount.getAccounts(userId);
       setAccounts(response.data);
       setAllAccounts(response.data); // Store the fetched accounts for searching
     } catch (error) {
@@ -139,10 +139,10 @@ const filterAndSortAccounts = (search: string, sort: string) => {
     try {
       if (isEditMode && selectedAccount) {
         // Edit existing account
-        await api.updateAccount(selectedAccount._id, newAccount);
+        await apiAccount.updateAccount(selectedAccount._id, newAccount);
       } else {
         // Add new account
-        await api.addAccount(userId, newAccount);
+        await apiAccount.addAccount(userId, newAccount);
       }
 
       fetchAccounts();
@@ -170,7 +170,7 @@ const filterAndSortAccounts = (search: string, sort: string) => {
   const handleDeleteAccount = async () => {
     if (accountToDelete) {
       try {
-        await api.deleteAccount(accountToDelete);
+        await apiAccount.deleteAccount(accountToDelete);
         setAccounts(accounts.filter((account) => account._id !== accountToDelete));
         console.log(`Account with ID: ${accountToDelete} has been deleted.`);
       } catch (error) {

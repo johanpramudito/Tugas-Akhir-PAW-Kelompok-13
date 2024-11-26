@@ -24,6 +24,7 @@ export const apiRecord = {
   addRecord: async (data: RecordData) => axiosInstance.post(`/addRecord`, data),
   updateRecord: async (id: string, data: Record<string, unknown>) => axiosInstance.put(`/updateRecord/${id}`, data),
   deleteRecord: async (id: string) => axiosInstance.delete(`/deleteRecord/${id}`),
+  addTransfer: async (data: RecordData) => axiosInstance.post(`/addTransfer`, data)
 };
 
 export default apiRecord;
