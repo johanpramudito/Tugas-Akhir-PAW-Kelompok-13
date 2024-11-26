@@ -8,6 +8,7 @@ import api from "@utils/apiAccount";
 import apiRecord from "@utils/apiRecord";
 import { useUserContext } from "@/context/UserContext";
 import { FiEdit, FiTrash } from "react-icons/fi";
+import { AiOutlineSelect } from "react-icons/ai";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2"; // Import Doughnut
 
@@ -57,6 +58,63 @@ export default function Dashboard() {
   const [latestRecords, setLatestRecords] = useState<Record[]>([]);
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
+  const [dateRange, setDateRange] = useState<string>("today");
+
+  // Dapatkan tanggal hari ini dalam format yang cocok untuk perbandingan
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set ke awal hari (00:00:00)
+
+  const getDateRange = (range: string): { start: Date; end: Date } => {
+    const now = new Date();
+    const start = new Date();
+    const end = new Date();
+
+    switch (range) {
+      case "today":
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "this-week":
+        const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        start.setDate(now.getDate() - day);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "this-month":
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+        end.setMonth(start.getMonth() + 1);
+        end.setDate(0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "this-year":
+        start.setMonth(0, 1);
+        start.setHours(0, 0, 0, 0);
+        end.setMonth(11, 31);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "7-days":
+        start.setDate(now.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "30-days":
+        start.setDate(now.getDate() - 30);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "90-days":
+        start.setDate(now.getDate() - 90);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      default:
+        break;
+    }
+
+    return { start, end };
+  };
 
   const categoryColors = {
     "Food & Beverages": "#FF6384",
@@ -105,58 +163,85 @@ export default function Dashboard() {
     }
   };
 
-  const fetchRecords = async () => {
+  const fetchRecords = async (accountId?: string) => {
     try {
       if (!userId) return;
 
-      // Ambil data akun berdasarkan userId
+      // Fetch accounts based on userId
       const AccountResponse = await api.getAccounts(userId);
       const accounts = AccountResponse.data;
 
-      // Ambil initialAmount dari akun dengan tipe "Cash" dan "Bank"
-      const initialAmountFromAccounts = accounts
-        .filter(
-          (account: Account) =>
-            account.type === "Cash" || account.type === "Bank"
-        )
-        .reduce(
-          (acc: number, account: Account) => acc + (account.initialAmount || 0),
-          0
-        ); // Jumlahkan initialAmount dari semua akun Cash dan Bank
+      // Calculate initialAmount from the selected account (if any)
+      let initialAmountFromAccounts = 0;
 
-      // Ambil data records (Expense dan Income) berdasarkan userId
-      const response = await apiRecord.getRecordByUser(userId);
-      const records = response.data;
+      if (accountId) {
+        // If an account is selected, only calculate initialAmount from that account
+        const selectedAccount = accounts.find(
+          (account: Account) => account._id === accountId
+        );
+        if (selectedAccount) {
+          initialAmountFromAccounts = selectedAccount.initialAmount || 0;
+        }
+      } else {
+        // If no account is selected, sum initialAmount from all Cash and Bank accounts
+        initialAmountFromAccounts = accounts
+          .filter(
+            (account: Account) =>
+              account.type === "Cash" || account.type === "Bank"
+          )
+          .reduce(
+            (acc: number, account: Account) =>
+              acc + (account.initialAmount || 0),
+            0
+          );
+      }
 
-      // Filter untuk hanya mengambil records bertipe "Expense"
-      const expenseRecords = records.filter(
+      const { start, end } = getDateRange(dateRange); // Get the date range
+      let records: Record[] = [];
+
+      // Fetch records based on the selected account (if any)
+      if (accountId) {
+        const response = await apiRecord.getRecordByAccount(accountId); // Fetch records by accountId
+        records = response.data;
+      } else {
+        // Fetch all records (Expense and Income) based on userId
+        const response = await apiRecord.getRecordByUser(userId);
+        records = response.data;
+      }
+
+      // Filter records based on the selected date range
+      const filteredRecords = records.filter((record: Record) => {
+        const recordDate = new Date(record.dateTime);
+        return recordDate >= start && recordDate <= end;
+      });
+
+      // Filter records by type
+      const expenseRecords = filteredRecords.filter(
         (record: Record) => record.type === "Expense"
       );
-
-      // Hitung total expense
-      const totalExpense = expenseRecords.reduce(
-        (sum: number, record: Record) => sum + (record.amount || 0), // Pastikan amount ada
-        0
-      );
-
-      // Set total expense ke state
-      setTotalExpense(totalExpense);
-
-      // Hitung total income, termasuk initialAmount dari semua akun "Cash" dan "Bank"
-      const incomeRecords = records.filter(
+      const incomeRecords = filteredRecords.filter(
         (record: Record) => record.type === "Income"
       );
 
-      const totalIncome = incomeRecords.reduce(
-        (acc: number, record: Record) => acc + (record.amount || 0), // Pastikan amount ada
-        initialAmountFromAccounts // Tambahkan initialAmount dari semua akun Cash dan Bank
+      // Calculate total expense
+      const totalExpense = expenseRecords.reduce(
+        (sum, record) => sum + (record.amount || 0), // Ensure amount is not undefined
+        0
       );
 
-      // Set nilai total Income dan Expense ke state
-      setIncome(totalIncome);
-      setExpense(totalExpense);
+      // Calculate total income
+      const totalIncome =
+        initialAmountFromAccounts + // Add initialAmount when calculating income
+        incomeRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
 
-      // Kategori chart: group by category dan total expense per kategori
+      // Update state with the calculated values
+      setExpense(totalExpense);
+      setIncome(totalIncome);
+
+      // Set total expense to state
+      setTotalExpense(totalExpense);
+
+      // Set chart data: group by category and total expense per category
       const categories: { [key: string]: number } = {};
       expenseRecords.forEach((record: Record) => {
         categories[record.category] =
@@ -176,48 +261,26 @@ export default function Dashboard() {
             backgroundColor: labels.map(
               (label) =>
                 categoryColors[label as keyof typeof categoryColors] ||
-                "#CCCCCC" // Default warna jika tidak ada match
+                "#FF0000" // Default color if no match
             ),
             hoverOffset: 4,
           },
         ],
       });
 
-      // Urutkan data berdasarkan dateTime secara menurun
-      const sortedRecords = records.sort(
+      // Sort records by dateTime in descending order
+      const sortedRecords = filteredRecords.sort(
         (a: Record, b: Record) =>
           new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
       );
 
-      // Ambil 5 record terbaru
+      // Get the latest 5 records
       const latestRecords = sortedRecords.slice(0, 5);
-      setLatestRecords(latestRecords); // Simpan data untuk dirender
+      setLatestRecords(latestRecords); // Save data for rendering
     } catch (error) {
       console.error("Error fetching records:", error);
     }
   };
-
-  // const fetchData = async () => {
-  //   try {
-  //     if (!userId) return;
-  //     const response = await apiRecord.getRecordByUser(userId); // Ambil data dari API
-  //     const records = response.data;
-
-  //     // Hitung total Income dan Expense
-  //     const totalIncome = records
-  //       .filter((record: Record) => record.type === "Income")
-  //       .reduce((acc: number, record: Record) => acc + record.amount, 0);
-
-  //     const totalExpense = records
-  //       .filter((record: Record) => record.type === "Expense")
-  //       .reduce((acc: number, record: Record) => acc + record.amount, 0);
-
-  //     setIncome(totalIncome); // Simpan total Income
-  //     setExpense(totalExpense); // Simpan total Expense
-  //   } catch (error) {
-  //     console.error("Error fetching records:", error);
-  //   }
-  // };
 
   useEffect(() => {
     // Set loading to false after the component mounts
@@ -328,9 +391,12 @@ export default function Dashboard() {
           <div className="lg:flex lg:flex-row flex-col w-full gap-x-3 gap-y-3 items-center justify-center">
             <div className="flex lg:flex-row flex-col bg-gray-100 p-4 rounded-lg shadow-md w-full gap-y-3 lg:gap-y-0 lg:gap-x-3">
               {accounts.map((account) => (
-                <button
+                <div
                   key={account._id}
-                  onClick={() => setSelectedAccount(account)} // Set selected account
+                  onClick={() => {
+                    setSelectedAccount(account); // Set akun yang dipilih
+                    fetchRecords(account._id); // Panggil fetchRecords dengan accountId yang dipilih
+                  }}
                   className={`flex justify-between items-center p-4 rounded-lg shadow-sm w-full ${
                     account.type === "Bank"
                       ? "bg-blue-200"
@@ -370,6 +436,9 @@ export default function Dashboard() {
 
                   {/* Edit and Delete Buttons */}
                   <div className="flex items-center gap-4 ml-4">
+                    <button className="text-gray-600 hover:text-teal-600">
+                      <AiOutlineSelect size={20} />
+                    </button>
                     <button
                       onClick={() => handleEditAccount(account)}
                       className="text-gray-600 hover:text-blue-600"
@@ -383,7 +452,7 @@ export default function Dashboard() {
                       <FiTrash size={20} />
                     </button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
             <button onClick={handleOpenModal}>
@@ -391,6 +460,23 @@ export default function Dashboard() {
                 + Create Account
               </div>
             </button>
+          </div>
+          <div className="date-range-selector flex items-center justify-center">
+            <select
+              value={dateRange}
+              onChange={(e) => {
+                setDateRange(e.target.value);
+                fetchRecords(selectedAccount?._id); // Refetch records on change
+              }}
+            >
+              <option value="today">Today</option>
+              <option value="this-week">This Week</option>
+              <option value="this-month">This Month</option>
+              <option value="this-year">This Year</option>
+              <option value="7-days">Last 7 Days</option>
+              <option value="30-days">Last 30 Days</option>
+              <option value="90-days">Last 90 Days</option>
+            </select>
           </div>
         </div>
         <div className="flex lg:flex-row flex-col gap-4 auto-rows-fr justify-center ">
@@ -431,40 +517,53 @@ export default function Dashboard() {
             <div className="w-full h-[1px] bg-black mb-2"></div>
             <div className="flex flex-col gap-y-2">
               <div className="flex flex-col gap-y-4">
-                {latestRecords.map((record) => (
-                  <div
-                    key={record._id}
-                    className="flex flex-row items-center justify-between p-2 bg-white rounded-lg"
-                  >
-                    <div className="flex flex-row justify-center items-center gap-x-3">
-                      <div
-                        className="flex justify-center items-center w-7 h-7 rounded-full"
-                        style={{
-                          backgroundColor:
-                            categoryColors[
-                              record.category as keyof typeof categoryColors
-                            ] || "#FF0000",
-                        }}
-                      ></div>
-                      <div className="flex flex-col">
-                        <h2 className="xl:text-lg font-semibold">
-                          {record.category}
-                        </h2>
-                        <h3>{record.note || "No note"}</h3>
+                {latestRecords.length > 0 ? (
+                  latestRecords.map((record) => (
+                    <div
+                      key={record._id}
+                      className="flex flex-row items-center justify-between p-2 bg-white rounded-lg"
+                    >
+                      <div className="flex flex-row justify-center items-center gap-x-3">
+                        <div
+                          className="flex justify-center items-center w-7 h-7 rounded-full"
+                          style={{
+                            backgroundColor:
+                              categoryColors[
+                                record.category as keyof typeof categoryColors
+                              ] || "#FF0000",
+                          }}
+                        ></div>
+                        <div className="flex flex-col">
+                          <h2 className="xl:text-lg font-semibold">
+                            {record.category}
+                          </h2>
+                          <h3>{record.note || "No note"}</h3>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <h3>Rp.{record.amount.toLocaleString("id-ID")}</h3>
+                        <h3>
+                          {new Date(record.dateTime).toLocaleTimeString(
+                            "id-ID",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}{" "}
+                          {new Date(record.dateTime).toLocaleDateString(
+                            "id-ID"
+                          )}
+                        </h3>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <h3>Rp.{record.amount.toLocaleString("id-ID")}</h3>
-                      <h3>
-                        {new Date(record.dateTime).toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                        {new Date(record.dateTime).toLocaleDateString("id-ID")}
-                      </h3>
-                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-center items-center p-4 bg-gray-100 rounded-lg">
+                    <h2 className="text-gray-500 text-lg">
+                      No Record Available
+                    </h2>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -485,7 +584,6 @@ export default function Dashboard() {
               <div className="flex flex-row justify-between">
                 <h4>Income</h4>
                 <h4>Rp{income.toLocaleString("id-ID")}</h4>{" "}
-                {/* Menampilkan total Income */}
               </div>
               <div className="relative pt-1">
                 <div className="flex mb-2 items-center justify-between">
@@ -494,12 +592,14 @@ export default function Dashboard() {
                     {((income / (expense + income)) * 100).toFixed(0)}%
                   </span>
                 </div>
-                {/* Progress bar untuk Expense dibandingkan dengan Income */}
+                {/* Progress bar for Income */}
                 <div className="flex mb-2 w-full h-2 bg-gray-200 rounded-full">
                   <div
                     className="h-full bg-green-500 rounded-full"
                     style={{
-                      width: `${((income / (expense + income)) * 100).toFixed(0)}%`,
+                      width: `${((income / (expense + income)) * 100).toFixed(
+                        0
+                      )}%`,
                     }}
                   ></div>
                 </div>
@@ -510,21 +610,22 @@ export default function Dashboard() {
               <div className="flex flex-row justify-between">
                 <h4>Expense</h4>
                 <h4>Rp{expense.toLocaleString("id-ID")}</h4>{" "}
-                {/* Menampilkan total Expense */}
               </div>
               <div className="relative pt-1">
                 <div className="flex mb-2 items-center justify-between">
                   <span className="text-xs font-medium">Progress</span>
                   <span className="text-xs font-medium">
-                    {(expense / (expense + income) * 100).toFixed(0)}%
+                    {((expense / (expense + income)) * 100).toFixed(0)}%
                   </span>
                 </div>
-                {/* Progress bar untuk Expense dibandingkan dengan Income */}
+                {/* Progress bar for Expense */}
                 <div className="flex mb-2 w-full h-2 bg-gray-200 rounded-full">
                   <div
                     className="h-full bg-red-500 rounded-full"
                     style={{
-                      width: `${((expense / (expense + income)) * 100).toFixed(0)}%`,
+                      width: `${((expense / (expense + income)) * 100).toFixed(
+                        0
+                      )}%`,
                     }}
                   ></div>
                 </div>
