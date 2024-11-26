@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use environment variable for the API URL
-const API_URL = process.env.ACCOUNT_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_ACCOUNT_API_URL || '';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
