@@ -63,4 +63,4 @@ Tugas ini dibuat untuk memenuhi syarat penilaian tugas akhir mata kuliah **Penge
   [Frontend Tugas Akhir](https://frontend-tugas-akhir-paw-kelompok-13.vercel.app/)
 
 - **Web App (Backend)**:  
-  [Backend Tugas Akhir](https://backend-tugas-akhir-paw-kelompok-13.vercel.app/)
+  [Backend Tugas Akhir](https://paw13-production.up.railway.app/)
