@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_RECORD_API_URL || '';
+const API_URL = 'https://paw13-production.up.railway.app/api/records';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
