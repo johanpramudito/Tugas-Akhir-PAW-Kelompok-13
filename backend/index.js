@@ -27,7 +27,7 @@ app.use(cors());
 if (!process.env.DATABASE_URL) {
   throw Error("Database connection string not found");
 }
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.DATABASE_URL)
   .then(() => {
     console.log("Succesfully connected to MongoDB");
   }).catch((err) => {
