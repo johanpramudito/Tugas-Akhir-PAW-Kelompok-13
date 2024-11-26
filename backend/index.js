@@ -23,6 +23,10 @@ app.use(express.urlencoded({extended: false}));
 // CORS
 app.use(cors());
 
+app.use(cors({
+  origin: 'https://frontend-tugas-akhir-paw-kelompok-13.vercel.app/'  //to be changed later to vercel url
+}));
+
 // MONGODB CONNECTION
 if (!process.env.MONGODB_URI) {
   throw Error("Database connection string not found");
